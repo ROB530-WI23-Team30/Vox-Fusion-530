@@ -14,7 +14,10 @@ def sample_rays(mask, num_samples):
     probs = mask / (mask.sum() + 1e-7)
     flatten_probs = probs.reshape(B, -1)
     sampled_index = sampling_without_replacement(
-        torch.log(flatten_probs + 1e-7), num_samples)
-    sampled_masks = (torch.zeros_like(
-        flatten_probs).scatter_(-1, sampled_index, 1).reshape(B, H, W) > 0)
+        torch.log(flatten_probs + 1e-7), num_samples
+    )
+    sampled_masks = (
+        torch.zeros_like(flatten_probs).scatter_(-1, sampled_index, 1).reshape(B, H, W)
+        > 0
+    )
     return sampled_masks

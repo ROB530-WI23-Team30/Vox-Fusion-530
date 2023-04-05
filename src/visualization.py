@@ -12,7 +12,8 @@ class Visualizer:
         try:
             engine = o3d.visualization.VisualizerWithKeyCallback()
             engine.create_window(
-                window_name="VoxSLAM", width=1280, height=720, visible=True)
+                window_name="VoxSLAM", width=1280, height=720, visible=True
+            )
             engine.run()
             engine.destroy_window()
         except Exception as e:

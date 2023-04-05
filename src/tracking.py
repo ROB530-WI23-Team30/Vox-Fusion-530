@@ -62,17 +62,17 @@ class Tracking:
 
     def spin(self, share_data, kf_buffer):
         print("******* tracking process started! *******")
-        progress_bar = tqdm(
-            range(self.start_frame, self.end_frame), position=0)
+        progress_bar = tqdm(range(self.start_frame, self.end_frame), position=0)
         progress_bar.set_description("tracking frame")
         for frame_id in progress_bar:
             if share_data.stop_tracking:
                 break
             try:
                 data_in = self.data_stream[frame_id]
-    
+
                 if self.show_imgs:
                     import cv2
+
                     img = data_in[1]
                     depth = data_in[2]
                     cv2.imshow("img", img.cpu().numpy())
@@ -85,9 +85,7 @@ class Tracking:
                 if self.render_freq > 0 and (frame_id + 1) % self.render_freq == 0:
                     self.render_debug_images(share_data, current_frame)
             except Exception as e:
-                        print("error in dataloading: ", e,
-                            f"skipping frame {frame_id}")
-                            
+                print("error in dataloading: ", e, f"skipping frame {frame_id}")
 
         share_data.stop_mapping = True
         print("******* tracking process died *******")
@@ -95,7 +93,7 @@ class Tracking:
     def check_keyframe(self, check_frame, kf_buffer):
         try:
             kf_buffer.put(check_frame, block=True)
-        except:
+        except:  # noqa
             pass
 
     def do_tracking(self, share_data, current_frame, kf_buffer):
@@ -120,7 +118,7 @@ class Tracking:
             self.max_voxel_hit,
             self.max_distance,
             profiler=self.profiler,
-            depth_variance=True
+            depth_variance=True,
         )
         self.profiler.tok("track frame")
 
@@ -169,15 +167,15 @@ class Tracking:
             self.max_voxel_hit,
             self.max_distance,
             chunk_size=20000,
-            return_raw=True
+            return_raw=True,
         )
 
-        rdepth = fill_in((h, w, 1),
-                         final_outputs["ray_mask"].view(h, w),
-                         final_outputs["depth"], 0)
-        rcolor = fill_in((h, w, 3),
-                         final_outputs["ray_mask"].view(h, w),
-                         final_outputs["color"], 0)
+        rdepth = fill_in(
+            (h, w, 1), final_outputs["ray_mask"].view(h, w), final_outputs["depth"], 0
+        )
+        rcolor = fill_in(
+            (h, w, 3), final_outputs["ray_mask"].view(h, w), final_outputs["color"], 0
+        )
         # self.logger.log_raw_image(ind, rcolor, rdepth)
 
         # raw_surface=fill_in((h, w, 1),

@@ -2,17 +2,18 @@ import torch
 import torch.nn as nn
 import numpy as np
 from se3pose import OptimizablePose
-from utils.sample_util import *
+from utils.sample_util import sample_rays
 
 rays_dir = None
+
 
 class RGBDFrame(nn.Module):
     def __init__(self, fid, rgb, depth, K, pose=None) -> None:
         super().__init__()
         self.stamp = fid
         self.h, self.w = depth.shape
-        self.rgb = rgb.cuda() 
-        self.depth = depth.cuda() #/ 2
+        self.rgb = rgb.cuda()
+        self.depth = depth.cuda()  # / 2
         self.K = K
         # self.register_buffer("rgb", rgb)
         # self.register_buffer("depth", depth)
@@ -38,20 +39,19 @@ class RGBDFrame(nn.Module):
 
     @torch.no_grad()
     def get_rays(self, w=None, h=None, K=None):
-        w = self.w if w == None else w
-        h = self.h if h == None else h
+        w = self.w if w is None else w
+        h = self.h if h is None else h
         if K is None:
             K = np.eye(3)
             K[0, 0] = self.K[0, 0] * w / self.w
             K[1, 1] = self.K[1, 1] * h / self.h
             K[0, 2] = self.K[0, 2] * w / self.w
             K[1, 2] = self.K[1, 2] * h / self.h
-        ix, iy = torch.meshgrid(
-            torch.arange(w), torch.arange(h), indexing='xy')
+        ix, iy = torch.meshgrid(torch.arange(w), torch.arange(h), indexing="xy")
         rays_d = torch.stack(
-                    [(ix-K[0, 2]) / K[0,0],
-                    (iy-K[1,2]) / K[1,1],
-                    torch.ones_like(ix)], -1).float()
+            [(ix - K[0, 2]) / K[0, 0], (iy - K[1, 2]) / K[1, 1], torch.ones_like(ix)],
+            -1,
+        ).float()
         return rays_d
 
     @torch.no_grad()
@@ -69,4 +69,10 @@ class RGBDFrame(nn.Module):
     @torch.no_grad()
     def sample_rays(self, N_rays):
         self.sample_mask = sample_rays(
-            torch.where(self.depth > 0, torch.ones_like(self.depth)[None, ...], torch.zeros_like(self.depth)[None, ...]), N_rays)[0, ...]
+            torch.where(
+                self.depth > 0,
+                torch.ones_like(self.depth)[None, ...],
+                torch.zeros_like(self.depth)[None, ...],
+            ),
+            N_rays,
+        )[0, ...]

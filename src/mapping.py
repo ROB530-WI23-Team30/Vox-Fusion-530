@@ -1,10 +1,8 @@
 from copy import deepcopy
 import random
-from time import sleep
 import numpy as np
 
 import torch
-import trimesh
 
 from criterion import Criterion
 from loggers import BasicLogger
@@ -13,7 +11,8 @@ from variations.render_helpers import bundle_adjust_frames
 from utils.mesh_util import MeshExtractor
 
 torch.classes.load_library(
-    "third_party/sparse_octree/build/lib.linux-x86_64-cpython-38/svo.cpython-38-x86_64-linux-gnu.so")
+    "third_party/sparse_octree/build/lib.linux-x86_64-cpython-38/svo.cpython-38-x86_64-linux-gnu.so"
+)
 
 
 def get_network_size(net):
@@ -41,8 +40,7 @@ class Mapping:
         self.ckpt_freq = get_property(args, "ckpt_freq", -1)
         self.final_iter = get_property(mapper_specs, "final_iter", 0)
         self.mesh_res = get_property(mapper_specs, "mesh_res", 8)
-        self.save_data_freq = get_property(
-            args.debug_args, "save_data_freq", 0)
+        self.save_data_freq = get_property(args.debug_args, "save_data_freq", 0)
 
         # required args
         # self.overlap_th = mapper_specs["overlap_th"]
@@ -65,8 +63,10 @@ class Mapping:
 
         self.embeddings = torch.zeros(
             (num_embeddings, self.embed_dim),
-            requires_grad=True, dtype=torch.float32,
-            device=torch.device("cuda"))
+            requires_grad=True,
+            dtype=torch.float32,
+            device=torch.device("cuda"),
+        )
         torch.nn.init.normal_(self.embeddings, std=0.01)
         self.embed_optim = torch.optim.Adam([self.embeddings], lr=5e-3)
         self.model_optim = torch.optim.Adam(self.decoder.parameters(), lr=5e-3)
@@ -102,21 +102,30 @@ class Mapping:
                     if (tracked_frame.stamp - self.current_keyframe.stamp) > 50:
                         self.insert_keyframe(tracked_frame)
                         print(
-                            f"********** current num kfs: { len(self.keyframe_graph) } **********")
+                            f"********** current num kfs: { len(self.keyframe_graph) }"
+                            + "**********"
+                        )
 
                 # self.create_voxels(tracked_frame)
                 tracked_pose = tracked_frame.get_pose().detach()
                 ref_pose = self.current_keyframe.get_pose().detach()
                 rel_pose = torch.linalg.inv(ref_pose) @ tracked_pose
-                self.frame_poses += [(len(self.keyframe_graph) -
-                                      1, rel_pose.cpu())]
+                self.frame_poses += [(len(self.keyframe_graph) - 1, rel_pose.cpu())]
                 self.depth_maps += [tracked_frame.depth.clone().cpu()]
 
-                if self.mesh_freq > 0 and (tracked_frame.stamp + 1) % self.mesh_freq == 0:
-                    self.logger.log_mesh(self.extract_mesh(
-                        res=self.mesh_res, clean_mesh=True), name=f"mesh_{tracked_frame.stamp:05d}.ply")
+                if (
+                    self.mesh_freq > 0
+                    and (tracked_frame.stamp + 1) % self.mesh_freq == 0
+                ):
+                    self.logger.log_mesh(
+                        self.extract_mesh(res=self.mesh_res, clean_mesh=True),
+                        name=f"mesh_{tracked_frame.stamp:05d}.ply",
+                    )
 
-                if self.save_data_freq > 0 and (tracked_frame.stamp + 1) % self.save_data_freq == 0:
+                if (
+                    self.save_data_freq > 0
+                    and (tracked_frame.stamp + 1) % self.save_data_freq == 0
+                ):
                     self.save_debug_data(tracked_frame)
             elif share_data.stop_mapping:
                 break
@@ -124,8 +133,9 @@ class Mapping:
         print(f"********** post-processing {self.final_iter} steps **********")
         self.num_iterations = 1
         for iter in range(self.final_iter):
-            self.do_mapping(share_data, tracked_frame=None,
-                            update_pose=False, update_decoder=False)
+            self.do_mapping(
+                share_data, tracked_frame=None, update_pose=False, update_decoder=False
+            )
 
         print("******* extracting final mesh *******")
         pose = self.get_updated_poses()
@@ -137,11 +147,7 @@ class Mapping:
         print("******* mapping process died *******")
 
     def do_mapping(
-            self,
-            share_data,
-            tracked_frame=None,
-            update_pose=True,
-            update_decoder=True
+        self, share_data, tracked_frame=None, update_pose=True, update_decoder=True
     ):
         # self.map.create_voxels(self.keyframe_graph[0])
         self.decoder.train()
@@ -173,14 +179,13 @@ class Mapping:
     def select_optimize_targets(self, tracked_frame=None):
         # TODO: better ways
         targets = []
-        selection_method = 'random'
+        selection_method = "random"
         if len(self.keyframe_graph) <= self.window_size:
             targets = self.keyframe_graph[:]
-        elif selection_method == 'random':
+        elif selection_method == "random":
             targets = random.sample(self.keyframe_graph, self.window_size)
-        elif selection_method == 'overlap':
-            raise NotImplementedError(
-                f"seletion method {selection_method} unknown")
+        elif selection_method == "overlap":
+            raise NotImplementedError(f"seletion method {selection_method} unknown")
 
         if tracked_frame is not None and tracked_frame != self.current_keyframe:
             targets += [tracked_frame]
@@ -204,8 +209,8 @@ class Mapping:
     def create_voxels(self, frame):
         points = frame.get_points().cuda()
         pose = frame.get_pose().cuda()
-        points = points@pose[:3, :3].transpose(-1, -2) + pose[:3, 3]
-        voxels = torch.div(points, self.voxel_size, rounding_mode='floor')
+        points = points @ pose[:3, :3].transpose(-1, -2) + pose[:3, 3]
+        voxels = torch.div(points, self.voxel_size, rounding_mode="floor")
 
         self.svo.insert(voxels.cpu().int())
         self.update_grid_features()
@@ -255,9 +260,17 @@ class Mapping:
 
         frame_poses = self.get_updated_poses()
         mesh = self.mesher.create_mesh(
-            self.decoder, encoder_states, self.voxel_size, voxels,
-            frame_poses=frame_poses[-1], depth_maps=self.depth_maps[-1],
-            clean_mseh=clean_mesh, require_color=True, offset=-10, res=res)
+            self.decoder,
+            encoder_states,
+            self.voxel_size,
+            voxels,
+            frame_poses=frame_poses[-1],
+            depth_maps=self.depth_maps[-1],
+            clean_mseh=clean_mesh,
+            require_color=True,
+            offset=-10,
+            res=res,
+        )
         return mesh
 
     @torch.no_grad()
@@ -266,23 +279,23 @@ class Mapping:
         index = features.eq(-1).any(-1)
         voxels = voxels[~index, :]
         features = features[~index, :]
-        voxels = (voxels[:, :3] + voxels[:, -1:] / 2) * \
-            self.voxel_size + offset
-        print(torch.max(features)-torch.count_nonzero(index))
+        voxels = (voxels[:, :3] + voxels[:, -1:] / 2) * self.voxel_size + offset
+        print(torch.max(features) - torch.count_nonzero(index))
         return voxels
 
     @torch.no_grad()
     def save_debug_data(self, tracked_frame, offset=-10):
         """
-        save per-frame voxel, mesh and pose 
+        save per-frame voxel, mesh and pose
         """
         pose = tracked_frame.get_pose().detach().cpu().numpy()
         pose[:3, 3] += offset
         frame_poses = self.get_updated_poses()
         mesh = self.extract_mesh(res=8, clean_mesh=True)
         voxels = self.extract_voxels().detach().cpu().numpy()
-        keyframe_poses = [p.get_pose().detach().cpu().numpy()
-                          for p in self.keyframe_graph]
+        keyframe_poses = [
+            p.get_pose().detach().cpu().numpy() for p in self.keyframe_graph
+        ]
 
         for f in frame_poses:
             f[:3, 3] += offset
@@ -293,12 +306,15 @@ class Mapping:
         faces = np.asarray(mesh.triangles)
         color = np.asarray(mesh.vertex_colors)
 
-        self.logger.log_debug_data({
-            "pose": pose,
-            "updated_poses": frame_poses,
-            "mesh": {"verts": verts, "faces": faces, "color": color},
-            "voxels": voxels,
-            "voxel_size": self.voxel_size,
-            "keyframes": keyframe_poses,
-            "is_keyframe": (tracked_frame == self.current_keyframe)
-        }, tracked_frame.stamp)
+        self.logger.log_debug_data(
+            {
+                "pose": pose,
+                "updated_poses": frame_poses,
+                "mesh": {"verts": verts, "faces": faces, "color": color},
+                "voxels": voxels,
+                "voxel_size": self.voxel_size,
+                "keyframes": keyframe_poses,
+                "is_keyframe": (tracked_frame == self.current_keyframe),
+            },
+            tracked_frame.stamp,
+        )

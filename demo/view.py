@@ -37,13 +37,19 @@ class LineMesh(object):
             points {ndarray} -- Numpy array of ponts Nx3.
 
         Keyword Arguments:
-            lines {list[list] or None} -- List of point index pairs denoting line segments. If None, implicit lines from ordered pairwise points. (default: {None})
-            colors {list} -- list of colors, or single color of the line (default: {[0, 1, 0]})
+            lines {list[list] or None} -- List of point index pairs denoting line
+                   segments.
+        If None, implicit lines from ordered pairwise points. (default: {None})
+            colors {list} -- list of colors, or single color of the line
+        (default: {[0, 1, 0]})
             radius {float} -- radius of cylinder (default: {0.15})
         """
         self.points = np.array(points)
-        self.lines = np.array(
-            lines) if lines is not None else self.lines_from_ordered_points(self.points)
+        self.lines = (
+            np.array(lines)
+            if lines is not None
+            else self.lines_from_ordered_points(self.points)
+        )
         self.colors = np.array(colors)
         self.radius = radius
         self.cylinder_segments = []
@@ -72,14 +78,15 @@ class LineMesh(object):
             translation = first_points[i, :] + line_segment * line_length * 0.5
             # create cylinder and apply transformations
             cylinder_segment = o3d.geometry.TriangleMesh.create_cylinder(
-                self.radius, line_length)
-            cylinder_segment = cylinder_segment.translate(
-                translation, relative=False)
+                self.radius, line_length
+            )
+            cylinder_segment = cylinder_segment.translate(translation, relative=False)
             if axis is not None:
                 axis_a = axis * angle
                 cylinder_segment = cylinder_segment.rotate(
                     R=o3d.geometry.get_rotation_matrix_from_axis_angle(axis_a),
-                    center=cylinder_segment.get_center())
+                    center=cylinder_segment.get_center(),
+                )
                 # cylinder_segment = cylinder_segment.rotate(
                 #   axis_a, center=True, type=o3d.geometry.RotationType.AxisAngle)
             # color cylinder
@@ -99,20 +106,23 @@ class LineMesh(object):
             vis.remove_geometry(cylinder)
 
     def merge_cylinder_segments(self):
-
-        vertices_list = [np.asarray(mesh.vertices)
-                         for mesh in self.cylinder_segments]
-        triangles_list = [np.asarray(mesh.triangles)
-                          for mesh in self.cylinder_segments]
+        vertices_list = [np.asarray(mesh.vertices) for mesh in self.cylinder_segments]
+        triangles_list = [np.asarray(mesh.triangles) for mesh in self.cylinder_segments]
         triangles_offset = np.cumsum([v.shape[0] for v in vertices_list])
         triangles_offset = np.insert(triangles_offset, 0, 0)[:-1]
 
         vertices = np.vstack(vertices_list)
         triangles = np.vstack(
-            [triangle + offset for triangle, offset in zip(triangles_list, triangles_offset)])
+            [
+                triangle + offset
+                for triangle, offset in zip(triangles_list, triangles_offset)
+            ]
+        )
 
-        merged_mesh = o3d.geometry.TriangleMesh(o3d.open3d.utility.Vector3dVector(vertices),
-                                                o3d.open3d.utility.Vector3iVector(triangles))
+        merged_mesh = o3d.geometry.TriangleMesh(
+            o3d.open3d.utility.Vector3dVector(vertices),
+            o3d.open3d.utility.Vector3iVector(triangles),
+        )
         color = self.colors if self.colors.ndim == 1 else self.colors[0]
         merged_mesh.paint_uniform_color(color)
         self.cylinder_segments = [merged_mesh]
@@ -128,11 +138,11 @@ CAM_POINTS = np.array(
         [-0.5, 1, 1.5],
         [0.5, 1, 1.5],
         [0, 1.2, 1.5],
-    ])
+    ]
+)
 
 CAM_LINES = np.array(
-    [[1, 2], [2, 3], [3, 4], [4, 1], [1, 0], [
-        0, 2], [3, 0], [0, 4], [5, 7], [7, 6]]
+    [[1, 2], [2, 3], [3, 4], [4, 1], [1, 0], [0, 2], [3, 0], [0, 4], [5, 7], [7, 6]]
 )
 
 
@@ -151,9 +161,9 @@ def create_camera_actor(g, scale=0.05):
 def create_camera_actor2(g, pose, scale=0.05):
     """build open3d camera polydata"""
     points = o3d.utility.Vector3dVector(scale * CAM_POINTS)
-    points = points@pose[:3,:3].transpose() + pose[:3, 3]
+    points = points @ pose[:3, :3].transpose() + pose[:3, 3]
     lines = o3d.utility.Vector2iVector(CAM_LINES)
-    camera_actor = LineMesh(points, lines, [1,0,0], radius=0.005)
+    camera_actor = LineMesh(points, lines, [1, 0, 0], radius=0.005)
     camera_actor.merge_cylinder_segments()
     # color = (g * 1.0, 0.5 * (1 - g), 0.9 * (1 - g))
     # camera_actor.paint_uniform_color(color)
@@ -166,7 +176,8 @@ def load_voxels(voxel_centre, voxel_size):
         voxel = voxel_centre[i]
         half_vsize = voxel_size / 2
         bbox = o3d.geometry.AxisAlignedBoundingBox(
-            voxel-half_vsize, voxel+half_vsize)
+            voxel - half_vsize, voxel + half_vsize
+        )
         bbox.color = [0, 0, 0]
         voxels += [bbox]
     return voxels
@@ -185,7 +196,7 @@ def get_trajectory(poses, c=[1, 0, 0]):
     points = []
     for p in poses:
         points += [p[:3, 3]]
-    lines = [[i, i+1] for i in range(len(points)-1)]
+    lines = [[i, i + 1] for i in range(len(points) - 1)]
     # colors = [c for i in range(len(points))]
     # line_set = o3d.geometry.LineSet()
     # line_set.points = o3d.utility.Vector3dVector(points)
@@ -199,7 +210,7 @@ def get_trajectory(poses, c=[1, 0, 0]):
 
 def load_data(scene_path):
     print(scene_path)
-    data = pickle.load(open(scene_path, 'rb'))
+    data = pickle.load(open(scene_path, "rb"))
     mesh = load_mesh(data["mesh"])
     voxel_size = data["voxel_size"]
     voxels = load_voxels(data["voxels"], voxel_size)
@@ -209,14 +220,15 @@ def load_data(scene_path):
     return mesh, voxels, pose, updated_poses, keyframes
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("scene_path", type=str)
     parser.add_argument("--frame_rate", type=int, default=10)
     args = parser.parse_args()
 
     scene_data = natsort.natsorted(
-        glob(os.path.join(args.scene_path, "misc/scene_data_*.pkl")))
+        glob(os.path.join(args.scene_path, "misc/scene_data_*.pkl"))
+    )
     mesh = None
     frame_rate = args.frame_rate
     frame_count = 0
@@ -229,7 +241,8 @@ if __name__ == '__main__':
         if frame_count >= max_frame:
             return
         mesh, voxels, pose, updated_poses, keyframes = load_data(
-            scene_data[frame_count])
+            scene_data[frame_count]
+        )
 
         frame_poses += [pose]
         vis.clear_geometries()
@@ -265,9 +278,9 @@ if __name__ == '__main__':
         for i in range(max_frame):
             t1 = time()
             update_mesh_and_voxels(vis)
-            time_lapse = time()-t1
+            time_lapse = time() - t1
             if time_lapse < 1 / frame_rate:
-                sleep((1/frame_rate)-time_lapse)
+                sleep((1 / frame_rate) - time_lapse)
         print("end playing contiuously")
 
     vis = o3d.visualization.VisualizerWithKeyCallback()

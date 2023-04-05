@@ -15,23 +15,23 @@ from visualization import Visualizer
 class VoxSLAM:
     def __init__(self, args):
         self.args = args
-        
+
         # logger (optional)
         self.logger = BasicLogger(args)
         # visualizer (optional)
         self.visualizer = Visualizer(args, self)
 
-        # shared data 
-        mp.set_start_method('spawn', force=True)
-        BaseManager.register('ShareData', ShareData, ShareDataProxy)
+        # shared data
+        mp.set_start_method("spawn", force=True)
+        BaseManager.register("ShareData", ShareData, ShareDataProxy)
         manager = BaseManager()
         manager.start()
         self.share_data = manager.ShareData()
-        # keyframe buffer 
+        # keyframe buffer
         self.kf_buffer = mp.Queue(maxsize=1)
         # data stream
         self.data_stream = get_dataset(args)
-        # tracker 
+        # tracker
         self.tracker = Tracking(args, self.data_stream, self.logger, self.visualizer)
         # mapper
         self.mapper = Mapping(args, self.logger, self.visualizer)
@@ -41,16 +41,17 @@ class VoxSLAM:
 
     def start(self):
         mapping_process = mp.Process(
-            target=self.mapper.spin, args=(self.share_data, self.kf_buffer))
+            target=self.mapper.spin, args=(self.share_data, self.kf_buffer)
+        )
         mapping_process.start()
         print("initializing the first frame ...")
         sleep(5)
         tracking_process = mp.Process(
-            target=self.tracker.spin, args=(self.share_data, self.kf_buffer))
+            target=self.tracker.spin, args=(self.share_data, self.kf_buffer)
+        )
         tracking_process.start()
 
-        vis_process = mp.Process(
-            target=self.visualizer.spin, args=(self.share_data,))
+        vis_process = mp.Process(target=self.visualizer.spin, args=(self.share_data,))
         self.processes = [tracking_process, mapping_process]
 
         if self.args.enable_vis:

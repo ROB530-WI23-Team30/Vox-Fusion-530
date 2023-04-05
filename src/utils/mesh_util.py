@@ -1,4 +1,3 @@
-import math
 import torch
 
 import numpy as np
@@ -14,7 +13,7 @@ class MeshExtractor:
         self.rays_d = None
         self.depth_points = None
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def linearize_id(self, xyz, n_xyz):
         return xyz[:, 2] + n_xyz[-1] * xyz[:, 1] + (n_xyz[-1] * n_xyz[-2]) * xyz[:, 0]
 
@@ -27,20 +26,19 @@ class MeshExtractor:
 
     @torch.no_grad()
     def get_rays(self, w=None, h=None, K=None):
-        w = self.w if w == None else w
-        h = self.h if h == None else h
+        w = self.w if w is None else w
+        h = self.h if h is None else h
         if K is None:
             K = np.eye(3)
             K[0, 0] = self.K[0, 0] * w / self.w
             K[1, 1] = self.K[1, 1] * h / self.h
             K[0, 2] = self.K[0, 2] * w / self.w
             K[1, 2] = self.K[1, 2] * h / self.h
-        ix, iy = torch.meshgrid(
-            torch.arange(w), torch.arange(h), indexing='xy')
+        ix, iy = torch.meshgrid(torch.arange(w), torch.arange(h), indexing="xy")
         rays_d = torch.stack(
-            [(ix-K[0, 2]) / K[0, 0],
-             (iy-K[1, 2]) / K[1, 1],
-             torch.ones_like(ix)], -1).float()
+            [(ix - K[0, 2]) / K[0, 0], (iy - K[1, 2]) / K[1, 1], torch.ones_like(ix)],
+            -1,
+        ).float()
         return rays_d
 
     @torch.no_grad()
@@ -58,7 +56,8 @@ class MeshExtractor:
                     all_points = points.detach().cpu().numpy()
                 else:
                     all_points = np.concatenate(
-                        [all_points, points.detach().cpu().numpy()], 0)
+                        [all_points, points.detach().cpu().numpy()], 0
+                    )
             print("downsample all points")
             all_points = self.downsample_points(all_points)
             return all_points
@@ -71,16 +70,24 @@ class MeshExtractor:
             if self.depth_points is None:
                 self.depth_points = points.detach().cpu().numpy()
             else:
-                self.depth_points = np.concatenate(
-                    [self.depth_points, points], 0)
+                self.depth_points = np.concatenate([self.depth_points, points], 0)
             self.depth_points = self.downsample_points(self.depth_points)
         return self.depth_points
 
-    @ torch.no_grad()
-    def create_mesh(self, decoder, map_states, voxel_size, voxels,
-                    frame_poses=None, depth_maps=None, clean_mseh=False,
-                    require_color=False, offset=-10, res=8):
-
+    @torch.no_grad()
+    def create_mesh(
+        self,
+        decoder,
+        map_states,
+        voxel_size,
+        voxels,
+        frame_poses=None,
+        depth_maps=None,
+        clean_mseh=False,
+        require_color=False,
+        offset=-10,
+        res=8,
+    ):
         sdf_grid = get_scores(decoder, map_states, voxel_size, bits=res)
         sdf_grid = sdf_grid.reshape(-1, res, res, res, 4)
 
@@ -94,7 +101,8 @@ class MeshExtractor:
             kdtree = cKDTree(all_points)
             print("********** query kdtree **********")
             point_mask = kdtree.query_ball_point(
-                verts, voxel_size * 0.5, workers=12, return_length=True)
+                verts, voxel_size * 0.5, workers=12, return_length=True
+            )
             print("********** finished querying kdtree **********")
             point_mask = point_mask > 0
             face_mask = point_mask[faces.reshape(-1)].reshape(-1, 3).any(-1)
@@ -109,39 +117,45 @@ class MeshExtractor:
             for points in batch_points:
                 voxel_pos = points // self.voxel_size
                 batch_voxels = voxels[:, :3].cuda()
-                batch_voxels = batch_voxels.unsqueeze(
-                    0).repeat(voxel_pos.shape[0], 1, 1)
+                batch_voxels = batch_voxels.unsqueeze(0).repeat(
+                    voxel_pos.shape[0], 1, 1
+                )
 
                 # filter outliers
                 nonzeros = (batch_voxels == voxel_pos.unsqueeze(1)).all(-1)
-                nonzeros = torch.where(nonzeros, torch.ones_like(
-                    nonzeros).int(), -torch.ones_like(nonzeros).int())
+                nonzeros = torch.where(
+                    nonzeros,
+                    torch.ones_like(nonzeros).int(),
+                    -torch.ones_like(nonzeros).int(),
+                )
                 sorted, index = torch.sort(nonzeros, dim=-1, descending=True)
                 sorted = sorted[:, 0]
                 index = index[:, 0]
-                valid = (sorted != -1)
+                valid = sorted != -1
                 color_empty = torch.zeros_like(points)
                 points = points[valid, :]
                 index = index[valid]
 
                 # get color
                 if len(points) > 0:
-                    color = eval_points(decoder, map_states,
-                                        points, index, voxel_size).cuda()
+                    color = eval_points(
+                        decoder, map_states, points, index, voxel_size
+                    ).cuda()
                     color_empty[valid] = color
                 colors += [color_empty]
             colors = torch.cat(colors, 0)
 
         mesh = o3d.geometry.TriangleMesh()
-        mesh.vertices = o3d.utility.Vector3dVector(verts+offset)
+        mesh.vertices = o3d.utility.Vector3dVector(verts + offset)
         mesh.triangles = o3d.utility.Vector3iVector(faces)
         if require_color:
             mesh.vertex_colors = o3d.utility.Vector3dVector(
-                colors.detach().cpu().numpy())
+                colors.detach().cpu().numpy()
+            )
         mesh.compute_vertex_normals()
         return mesh
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def marching_cubes(self, voxels, sdf):
         voxels = voxels[:, :3]
         sdf = sdf[..., 3]

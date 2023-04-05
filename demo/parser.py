@@ -1,6 +1,7 @@
 import yaml
 import argparse
 
+
 class ArgumentParserX(argparse.ArgumentParser):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -13,20 +14,20 @@ class ArgumentParserX(argparse.ArgumentParser):
         file_args = self.convert_to_namespace(file_args)
         for ckey, cvalue in file_args.__dict__.items():
             try:
-                self.add_argument('--' + ckey, type=type(cvalue),
-                                  default=cvalue, required=False)
+                self.add_argument(
+                    "--" + ckey, type=type(cvalue), default=cvalue, required=False
+                )
             except argparse.ArgumentError:
                 continue
         _args = super().parse_args(args, namespace)
         return _args
 
     def parse_config_yaml(self, yaml_path, args=None):
-
-        with open(yaml_path, 'r') as f:
+        with open(yaml_path, "r") as f:
             configs = yaml.load(f, Loader=yaml.FullLoader)
 
         if configs is not None:
-            base_config = configs.get('base_config')
+            base_config = configs.get("base_config")
             if base_config is not None:
                 base_config = self.parse_config_yaml(configs["base_config"])
                 if base_config is not None:
@@ -55,12 +56,14 @@ class ArgumentParserX(argparse.ArgumentParser):
                 dict1[k] = v
         return dict1
 
+
 def get_parser():
     parser = ArgumentParserX()
     parser.add_argument("--resume", default=None, type=str)
-    parser.add_argument("--debug", action='store_true')
+    parser.add_argument("--debug", action="store_true")
     return parser
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     args = ArgumentParserX()
     print(args.parse_args())

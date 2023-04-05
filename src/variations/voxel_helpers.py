@@ -11,13 +11,9 @@ from __future__ import (
     print_function,
     unicode_literals,
 )
-import os
-import sys
 import torch
 import torch.nn.functional as F
 from torch.autograd import Function
-import torch.nn as nn
-import sys
 import numpy as np
 import grid as _ext
 
@@ -51,7 +47,7 @@ class AABBRayIntersect(Function):
     def forward(ctx, voxelsize, n_max, points, ray_start, ray_dir):
         # HACK: speed-up ray-voxel intersection by batching...
         # HACK: avoid out-of-memory
-        G = min(2048, int(2 * 10 ** 9 / points.numel()))
+        G = min(2048, int(2 * 10**9 / points.numel()))
         S, N = ray_start.shape[:2]
         K = int(np.ceil(N / G))
         H = K * G
@@ -93,7 +89,7 @@ class SparseVoxelOctreeRayIntersect(Function):
     @staticmethod
     def forward(ctx, voxelsize, n_max, points, children, ray_start, ray_dir):
         # HACK: avoid out-of-memory
-        G = min(256, int(2 * 10 ** 9 / (points.numel() + children.numel())))
+        G = min(256, int(2 * 10**9 / (points.numel() + children.numel())))
         S, N = ray_start.shape[:2]
         K = int(np.ceil(N / G))
         H = K * G
@@ -142,7 +138,7 @@ class TriangleRayIntersect(Function):
     def forward(ctx, cagesize, blur_ratio, n_max, points, faces, ray_start, ray_dir):
         # HACK: speed-up ray-voxel intersection by batching...
         # HACK: avoid out-of-memory
-        G = min(2048, int(2 * 10 ** 9 / (3 * faces.numel())))
+        G = min(2048, int(2 * 10**9 / (3 * faces.numel())))
         S, N = ray_start.shape[:2]
         K = int(np.ceil(N / G))
         H = K * G
@@ -153,8 +149,7 @@ class TriangleRayIntersect(Function):
         ray_dir = ray_dir.reshape(S * G, K, 3)
         face_points = F.embedding(faces.reshape(-1, 3), points.reshape(-1, 3))
         face_points = (
-            face_points.unsqueeze(0).expand(
-                S * G, *face_points.size()).contiguous()
+            face_points.unsqueeze(0).expand(S * G, *face_points.size()).contiguous()
         )
         inds, depth, uv = _ext.triangle_intersect(
             ray_start.float(),
@@ -273,10 +268,8 @@ class InverseCDFRaySampling(Function):
 
         if H > N:
             pts_idx = torch.cat([pts_idx, pts_idx[:1].expand(H - N, P)], 0)
-            min_depth = torch.cat(
-                [min_depth, min_depth[:1].expand(H - N, P)], 0)
-            max_depth = torch.cat(
-                [max_depth, max_depth[:1].expand(H - N, P)], 0)
+            min_depth = torch.cat([min_depth, min_depth[:1].expand(H - N, P)], 0)
+            max_depth = torch.cat([max_depth, max_depth[:1].expand(H - N, P)], 0)
             probs = torch.cat([probs, probs[:1].expand(H - N, P)], 0)
             steps = torch.cat([steps, steps[:1].expand(H - N)], 0)
 
@@ -299,12 +292,12 @@ class InverseCDFRaySampling(Function):
         chunk_size = 4 * G  # to avoid oom?
         results = [
             _ext.inverse_cdf_sampling(
-                pts_idx[:, i: i + chunk_size].contiguous(),
-                min_depth.float()[:, i: i + chunk_size].contiguous(),
-                max_depth.float()[:, i: i + chunk_size].contiguous(),
-                noise.float()[:, i: i + chunk_size].contiguous(),
-                probs.float()[:, i: i + chunk_size].contiguous(),
-                steps.float()[:, i: i + chunk_size].contiguous(),
+                pts_idx[:, i : i + chunk_size].contiguous(),
+                min_depth.float()[:, i : i + chunk_size].contiguous(),
+                max_depth.float()[:, i : i + chunk_size].contiguous(),
+                noise.float()[:, i : i + chunk_size].contiguous(),
+                probs.float()[:, i : i + chunk_size].contiguous(),
+                steps.float()[:, i : i + chunk_size].contiguous(),
                 fixed_step_size,
             )
             for i in range(0, min_depth.size(1), chunk_size)
@@ -362,8 +355,7 @@ def _parallel_ray_sampling(
         delta = delta + delta.clone().uniform_().clamp(min=0.01, max=0.99)
     delta = delta * MARCH_SIZE
     sampled_depth = min_depth[:, :1] + delta
-    sampled_idx = (sampled_depth[:, :, None] >=
-                   min_depth[:, None, :]).sum(-1) - 1
+    sampled_idx = (sampled_depth[:, :, None] >= min_depth[:, None, :]).sum(-1) - 1
     sampled_idx = pts_idx.gather(1, sampled_idx)
 
     # include all boundary points
@@ -374,8 +366,7 @@ def _parallel_ray_sampling(
     sampled_depth, ordered_index = sampled_depth.sort(-1)
     sampled_idx = sampled_idx.gather(1, ordered_index)
     sampled_dists = sampled_depth[:, 1:] - sampled_depth[:, :-1]  # distances
-    sampled_depth = 0.5 * \
-        (sampled_depth[:, 1:] + sampled_depth[:, :-1])  # mid-points
+    sampled_depth = 0.5 * (sampled_depth[:, 1:] + sampled_depth[:, :-1])  # mid-points
 
     # remove all invalid depths
     min_ids = (sampled_depth[:, :, None] >= min_depth[:, None, :]).sum(-1) - 1
@@ -417,9 +408,9 @@ def parallel_ray_sampling(
         *[
             _parallel_ray_sampling(
                 MARCH_SIZE,
-                pts_idx[i: i + chunk_size],
-                min_depth[i: i + chunk_size],
-                max_depth[i: i + chunk_size],
+                pts_idx[i : i + chunk_size],
+                min_depth[i : i + chunk_size],
+                max_depth[i : i + chunk_size],
                 deterministic=deterministic,
             )
             for i in range(0, full_size, chunk_size)
@@ -436,7 +427,7 @@ def parallel_ray_sampling(
         xt = xs[0].new_ones(full_size, maxlen).fill_(pad)
         st = 0
         for i in range(len(xs)):
-            xt[st: st + xs[i].size(0), : xs[i].size(1)] = xs[i]
+            xt[st : st + xs[i].size(0), : xs[i].size(1)] = xs[i]
             st += xs[i].size(0)
         return xt
 
@@ -481,13 +472,18 @@ def trilinear_interp(p, q, point_feats):
 
 def offset_points(point_xyz, quarter_voxel=1, offset_only=False, bits=2):
     c = torch.arange(1, 2 * bits, 2, device=point_xyz.device)
-    ox, oy, oz = torch.meshgrid([c, c, c], indexing='ij')
-    offset = (torch.cat([ox.reshape(-1, 1),
-                         oy.reshape(-1, 1),
-                         oz.reshape(-1, 1)], 1).type_as(point_xyz) - bits) / float(bits - 1)
+    ox, oy, oz = torch.meshgrid([c, c, c], indexing="ij")
+    offset = (
+        torch.cat([ox.reshape(-1, 1), oy.reshape(-1, 1), oz.reshape(-1, 1)], 1).type_as(
+            point_xyz
+        )
+        - bits
+    ) / float(bits - 1)
     if not offset_only:
         return (
-            point_xyz.unsqueeze(1) + offset.unsqueeze(0).type_as(point_xyz) * quarter_voxel)
+            point_xyz.unsqueeze(1)
+            + offset.unsqueeze(0).type_as(point_xyz) * quarter_voxel
+        )
     return offset.type_as(point_xyz) * quarter_voxel
 
 
@@ -501,21 +497,23 @@ def splitting_points(point_xyz, point_feats, values, half_voxel):
 
     # get unique keys and inverse indices (for original key0, where it maps to in keys)
     new_keys, new_feats = torch.unique(
-        new_keys0, dim=0, sorted=True, return_inverse=True)
+        new_keys0, dim=0, sorted=True, return_inverse=True
+    )
     new_keys_idx = new_feats.new_zeros(new_keys.size(0)).scatter_(
-        0, new_feats, torch.arange(new_keys0.size(0), device=new_feats.device) // 64)
+        0, new_feats, torch.arange(new_keys0.size(0), device=new_feats.device) // 64
+    )
 
     # recompute key vectors using trilinear interpolation
     new_feats = new_feats.reshape(-1, 8)
 
     if values is not None:
         # (1/4 voxel size)
-        p = (new_keys - old_coords[new_keys_idx]
-             ).type_as(point_xyz).unsqueeze(1) * 0.25 + 0.5
+        p = (new_keys - old_coords[new_keys_idx]).type_as(point_xyz).unsqueeze(
+            1
+        ) * 0.25 + 0.5
         q = offset_points(p, 0.5, offset_only=True).unsqueeze(0) + 0.5  # BUG?
         point_feats = point_feats[new_keys_idx]
-        point_feats = F.embedding(point_feats, values).view(
-            point_feats.size(0), -1)
+        point_feats = F.embedding(point_feats, values).view(point_feats.size(0), -1)
         new_values = trilinear_interp(p, q, point_feats)
     else:
         new_values = None
@@ -523,16 +521,20 @@ def splitting_points(point_xyz, point_feats, values, half_voxel):
 
 
 @torch.no_grad()
-def ray_intersect(ray_start, ray_dir, flatten_centers, flatten_children, voxel_size, max_hits, max_distance=10.0):
+def ray_intersect(
+    ray_start,
+    ray_dir,
+    flatten_centers,
+    flatten_children,
+    voxel_size,
+    max_hits,
+    max_distance=10.0,
+):
     # ray-voxel intersection
     max_hits_temp = 50
     pts_idx, min_depth, max_depth = svo_ray_intersect(
-        voxel_size,
-        max_hits_temp,
-        flatten_centers,
-        flatten_children,
-        ray_start,
-        ray_dir)
+        voxel_size, max_hits_temp, flatten_centers, flatten_children, ray_start, ray_dir
+    )
 
     # sort the depths
     min_depth.masked_fill_(pts_idx.eq(-1), max_distance)
@@ -551,7 +553,6 @@ def ray_intersect(ray_start, ray_dir, flatten_centers, flatten_children, voxel_s
     max_depth = max_depth[..., :max_hits]
     pts_idx = pts_idx[..., :max_hits]
 
-
     hits = pts_idx.ne(-1).any(-1)
 
     intersection_outputs = {
@@ -565,8 +566,7 @@ def ray_intersect(ray_start, ray_dir, flatten_centers, flatten_children, voxel_s
 @torch.no_grad()
 def ray_sample(intersection_outputs, step_size=0.01, fixed=False):
     dists = (
-        intersection_outputs["max_depth"] -
-        intersection_outputs["min_depth"]
+        intersection_outputs["max_depth"] - intersection_outputs["min_depth"]
     ).masked_fill(intersection_outputs["intersected_voxel_idx"].eq(-1), 0)
     intersection_outputs["probs"] = dists / dists.sum(dim=-1, keepdim=True)
     intersection_outputs["steps"] = dists.sum(-1) / step_size
@@ -577,7 +577,10 @@ def ray_sample(intersection_outputs, step_size=0.01, fixed=False):
         intersection_outputs["min_depth"],
         intersection_outputs["max_depth"],
         intersection_outputs["probs"],
-        intersection_outputs["steps"], -1, fixed)
+        intersection_outputs["steps"],
+        -1,
+        fixed,
+    )
 
     sampled_dists = sampled_dists.clamp(min=0.0)
     sampled_depth.masked_fill_(sampled_idx.eq(-1), MAX_DEPTH)

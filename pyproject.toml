@@ -25,7 +25,12 @@ tqdm = "^4.65.0"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.11.0"
+pre-commit = "^3.2.2"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']

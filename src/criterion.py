@@ -13,10 +13,15 @@ class Criterion(nn.Module):
         self.truncation = args.criteria["sdf_truncation"]
         self.max_dpeth = args.data_specs["max_depth"]
 
-    def forward(self, outputs, obs, use_color_loss=True,
-                use_depth_loss=True, compute_sdf_loss=True,
-                weight_depth_loss=False):
-                
+    def forward(
+        self,
+        outputs,
+        obs,
+        use_color_loss=True,
+        use_depth_loss=True,
+        compute_sdf_loss=True,
+        weight_depth_loss=False,
+    ):
         img, depth = obs
         loss = 0
         loss_dict = {}
@@ -43,19 +48,17 @@ class Criterion(nn.Module):
             depth_loss = (gt_depth - pred_depth).abs()
 
             if weight_depth_loss:
-                depth_var = weights*((pred_depth.unsqueeze(-1) - z_vals)**2)
+                depth_var = weights * ((pred_depth.unsqueeze(-1) - z_vals) ** 2)
                 depth_var = torch.sum(depth_var, -1)
-                tmp = depth_loss/torch.sqrt(depth_var+1e-10)
-                valid_depth = (tmp < 10*tmp.median()) & valid_depth
+                tmp = depth_loss / torch.sqrt(depth_var + 1e-10)
+                valid_depth = (tmp < 10 * tmp.median()) & valid_depth
             depth_loss = depth_loss[valid_depth].mean()
             loss += self.depth_weight * depth_loss
             loss_dict["depth_loss"] = depth_loss.item()
 
         if compute_sdf_loss:
             fs_loss, sdf_loss = self.get_sdf_loss(
-                z_vals, gt_depth, pred_sdf,
-                truncation=self.truncation,
-                loss_type='l2'
+                z_vals, gt_depth, pred_sdf, truncation=self.truncation, loss_type="l2"
             )
             loss += self.fs_weight * fs_loss
             loss += self.sdf_weight * sdf_loss
@@ -76,7 +79,6 @@ class Criterion(nn.Module):
             return torch.mean(torch.square(x - y)[mask])
 
     def get_masks(self, z_vals, depth, epsilon):
-
         front_mask = torch.where(
             z_vals < (depth - epsilon),
             torch.ones_like(z_vals),
@@ -88,8 +90,9 @@ class Criterion(nn.Module):
             torch.zeros_like(z_vals),
         )
         depth_mask = torch.where(
-            (depth > 0.0) & (depth < self.max_dpeth), torch.ones_like(
-                depth), torch.zeros_like(depth)
+            (depth > 0.0) & (depth < self.max_dpeth),
+            torch.ones_like(depth),
+            torch.zeros_like(depth),
         )
         sdf_mask = (1.0 - front_mask) * (1.0 - back_mask) * depth_mask
 
@@ -102,14 +105,25 @@ class Criterion(nn.Module):
         return front_mask, sdf_mask, fs_weight, sdf_weight
 
     def get_sdf_loss(self, z_vals, depth, predicted_sdf, truncation, loss_type="l2"):
-
         front_mask, sdf_mask, fs_weight, sdf_weight = self.get_masks(
             z_vals, depth.unsqueeze(-1).expand(*z_vals.shape), truncation
         )
-        fs_loss = (self.compute_loss(predicted_sdf * front_mask, torch.ones_like(
-            predicted_sdf) * front_mask, loss_type=loss_type,) * fs_weight)
-        sdf_loss = (self.compute_loss((z_vals + predicted_sdf * truncation) * sdf_mask,
-                    depth.unsqueeze(-1).expand(*z_vals.shape) * sdf_mask, loss_type=loss_type,) * sdf_weight)
+        fs_loss = (
+            self.compute_loss(
+                predicted_sdf * front_mask,
+                torch.ones_like(predicted_sdf) * front_mask,
+                loss_type=loss_type,
+            )
+            * fs_weight
+        )
+        sdf_loss = (
+            self.compute_loss(
+                (z_vals + predicted_sdf * truncation) * sdf_mask,
+                depth.unsqueeze(-1).expand(*z_vals.shape) * sdf_mask,
+                loss_type=loss_type,
+            )
+            * sdf_weight
+        )
         # back_loss = (self.compute_loss(predicted_sdf * back_mask, -torch.ones_like(
         #     predicted_sdf) * back_mask, loss_type=loss_type,) * back_weight)
 

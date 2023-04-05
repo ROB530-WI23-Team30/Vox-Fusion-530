@@ -3,7 +3,6 @@ import os.path as osp
 import cv2
 import numpy as np
 import torch
-import csv
 from glob import glob
 from torch.utils.data import Dataset
 
@@ -32,13 +31,14 @@ class DataLoader(Dataset):
             return np.eye(4)
 
     def load_gt_pose(self):
-        gt_file = osp.join(self.data_path, 'traj.txt')
+        gt_file = osp.join(self.data_path, "traj.txt")
         gt_pose = np.loadtxt(gt_file)
         return gt_pose
 
     def load_depth(self, index):
         depth = cv2.imread(
-            osp.join(self.data_path, 'results/depth{:06d}.png'.format(index)), -1)
+            osp.join(self.data_path, "results/depth{:06d}.png".format(index)), -1
+        )
         depth = depth / 6553.5
         if self.max_depth > 0:
             depth[depth > self.max_depth] = 0
@@ -46,7 +46,8 @@ class DataLoader(Dataset):
 
     def load_image(self, index):
         rgb = cv2.imread(
-            osp.join(self.data_path, 'results/frame{:06d}.jpg'.format(index)), -1)
+            osp.join(self.data_path, "results/frame{:06d}.jpg".format(index)), -1
+        )
         rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         return rgb / 255.0
 
@@ -61,13 +62,14 @@ class DataLoader(Dataset):
         return index, img, depth, self.K, pose
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     loader = DataLoader(sys.argv[1])
     for data in loader:
         index, img, depth, K, _ = data
         print(K)
         print(index, img.shape)
-        cv2.imshow('img', img.numpy())
-        cv2.imshow('depth', depth.numpy())
+        cv2.imshow("img", img.numpy())
+        cv2.imshow("depth", depth.numpy())
         cv2.waitKey(1)

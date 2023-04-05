@@ -47,14 +47,18 @@ def trilinear_interp(p, q, point_feats):
 
 def offset_points(point_xyz, quarter_voxel=1, offset_only=False, bits=2):
     c = torch.arange(1, 2 * bits, 2, device=point_xyz.device)
-    ox, oy, oz = torch.meshgrid([c, c, c], indexing='ij')
-    offset = (torch.cat([
-        ox.reshape(-1, 1),
-        oy.reshape(-1, 1),
-        oz.reshape(-1, 1)], 1).type_as(point_xyz) - bits) / float(bits - 1)
+    ox, oy, oz = torch.meshgrid([c, c, c], indexing="ij")
+    offset = (
+        torch.cat([ox.reshape(-1, 1), oy.reshape(-1, 1), oz.reshape(-1, 1)], 1).type_as(
+            point_xyz
+        )
+        - bits
+    ) / float(bits - 1)
     if not offset_only:
         return (
-            point_xyz.unsqueeze(1) + offset.unsqueeze(0).type_as(point_xyz) * quarter_voxel)
+            point_xyz.unsqueeze(1)
+            + offset.unsqueeze(0).type_as(point_xyz) * quarter_voxel
+        )
     return offset.type_as(point_xyz) * quarter_voxel
 
 
@@ -82,8 +86,9 @@ def get_features(samples, map_states, voxel_size):
     sampled_dis = samples["sampled_point_distance"]
 
     point_xyz = F.embedding(sampled_idx, point_xyz)
-    point_feats = F.embedding(F.embedding(
-        sampled_idx, point_feats), values).view(point_xyz.size(0), -1)
+    point_feats = F.embedding(F.embedding(sampled_idx, point_feats), values).view(
+        point_xyz.size(0), -1
+    )
     feats = get_embeddings(sampled_xyz, point_xyz, point_feats, voxel_size)
     inputs = {"dists": sampled_dis, "emb": feats}
     return inputs
@@ -101,8 +106,8 @@ def get_scores(sdf_network, map_states, voxel_size, bits=8):
     @torch.no_grad()
     def get_scores_once(feats, points, values):
         # sample points inside voxels
-        start = -.5
-        end = .5  # - 1./bits
+        start = -0.5
+        end = 0.5  # - 1./bits
 
         x = y = z = torch.linspace(start, end, res)
         xx, yy, zz = torch.meshgrid(x, y, z)
@@ -131,17 +136,22 @@ def get_scores(sdf_network, map_states, voxel_size, bits=8):
                 "voxel_center_xyz": points,
                 "voxel_vertex_emb": values,
             },
-            voxel_size
+            voxel_size,
         )
 
         # evaluation with density
-        sdf_values = sdf_network.get_values(field_inputs['emb'].float().cuda())
-        return sdf_values.reshape(-1, res ** 3, 4).detach().cpu()
+        sdf_values = sdf_network.get_values(field_inputs["emb"].float().cuda())
+        return sdf_values.reshape(-1, res**3, 4).detach().cpu()
 
-    return torch.cat([
-        get_scores_once(feats[i: i + chunk_size],
-                        points[i: i + chunk_size], values)
-        for i in range(0, points.size(0), chunk_size)], 0).view(-1, res, res, res, 4)
+    return torch.cat(
+        [
+            get_scores_once(
+                feats[i : i + chunk_size], points[i : i + chunk_size], values
+            )
+            for i in range(0, points.size(0), chunk_size)
+        ],
+        0,
+    ).view(-1, res, res, res, 4)
 
 
 @torch.no_grad()
@@ -170,11 +180,11 @@ def eval_points(sdf_network, map_states, sampled_xyz, sampled_idx, voxel_size):
             "voxel_center_xyz": points,
             "voxel_vertex_emb": values,
         },
-        voxel_size
+        voxel_size,
     )
 
     # evaluation with density
-    sdf_values = sdf_network.get_values(field_inputs['emb'].float().cuda())
+    sdf_values = sdf_network.get_values(field_inputs["emb"].float().cuda())
     return sdf_values.reshape(-1, 4)[:, :3].detach().cpu()
 
     # return torch.cat([
@@ -184,18 +194,18 @@ def eval_points(sdf_network, map_states, sampled_xyz, sampled_idx, voxel_size):
 
 
 def render_rays(
-        rays_o,
-        rays_d,
-        map_states,
-        sdf_network,
-        step_size,
-        voxel_size,
-        truncation,
-        max_voxel_hit,
-        max_distance,
-        chunk_size=20000,
-        profiler=None,
-        return_raw=False
+    rays_o,
+    rays_d,
+    map_states,
+    sdf_network,
+    step_size,
+    voxel_size,
+    truncation,
+    max_voxel_hit,
+    max_distance,
+    chunk_size=20000,
+    profiler=None,
+    return_raw=False,
 ):
     centres = map_states["voxel_center_xyz"]
     childrens = map_states["voxel_structure"]
@@ -203,11 +213,11 @@ def render_rays(
     if profiler is not None:
         profiler.tick("ray_intersect")
     intersections, hits = ray_intersect(
-        rays_o, rays_d, centres,
-        childrens, voxel_size, max_voxel_hit, max_distance)
+        rays_o, rays_d, centres, childrens, voxel_size, max_voxel_hit, max_distance
+    )
     if profiler is not None:
         profiler.tok("ray_intersect")
-    assert(hits.sum() > 0)
+    assert hits.sum() > 0
 
     ray_mask = hits.view(1, -1)
     intersections = {
@@ -224,34 +234,34 @@ def render_rays(
     if profiler is not None:
         profiler.tok("ray_sample")
 
-    sampled_depth = samples['sampled_point_depth']
-    sampled_idx = samples['sampled_point_voxel_idx'].long()
+    sampled_depth = samples["sampled_point_depth"]
+    sampled_idx = samples["sampled_point_voxel_idx"].long()
 
     # only compute when the ray hits
     sample_mask = sampled_idx.ne(-1)
     if sample_mask.sum() == 0:  # miss everything skip
         return None, 0
 
-    sampled_xyz = ray(rays_o.unsqueeze(
-        1), rays_d.unsqueeze(1), sampled_depth.unsqueeze(2))
-    sampled_dir = rays_d.unsqueeze(1).expand(
-        *sampled_depth.size(), rays_d.size()[-1])
-    sampled_dir = sampled_dir / \
-        (torch.norm(sampled_dir, 2, -1, keepdim=True) + 1e-8)
-    samples['sampled_point_xyz'] = sampled_xyz
-    samples['sampled_point_ray_direction'] = sampled_dir
+    sampled_xyz = ray(
+        rays_o.unsqueeze(1), rays_d.unsqueeze(1), sampled_depth.unsqueeze(2)
+    )
+    sampled_dir = rays_d.unsqueeze(1).expand(*sampled_depth.size(), rays_d.size()[-1])
+    sampled_dir = sampled_dir / (torch.norm(sampled_dir, 2, -1, keepdim=True) + 1e-8)
+    samples["sampled_point_xyz"] = sampled_xyz
+    samples["sampled_point_ray_direction"] = sampled_dir
 
     # apply mask
     samples_valid = {name: s[sample_mask] for name, s in samples.items()}
 
-    num_points = samples_valid['sampled_point_depth'].shape[0]
+    num_points = samples_valid["sampled_point_depth"].shape[0]
     field_outputs = []
     if chunk_size < 0:
         chunk_size = num_points
 
     for i in range(0, num_points, chunk_size):
-        chunk_samples = {name: s[i:i+chunk_size]
-                         for name, s in samples_valid.items()}
+        chunk_samples = {
+            name: s[i : i + chunk_size] for name, s in samples_valid.items()
+        }
 
         # get encoder features as inputs
         if profiler is not None:
@@ -269,30 +279,28 @@ def render_rays(
 
         field_outputs.append(chunk_outputs)
 
-    field_outputs = {name: torch.cat(
-        [r[name] for r in field_outputs], dim=0) for name in field_outputs[0]}
+    field_outputs = {
+        name: torch.cat([r[name] for r in field_outputs], dim=0)
+        for name in field_outputs[0]
+    }
 
-    outputs = {'sample_mask': sample_mask}
+    outputs = {"sample_mask": sample_mask}
 
-    sdf = masked_scatter_ones(sample_mask, field_outputs['sdf']).squeeze(-1)
-    colour = masked_scatter(sample_mask, field_outputs['color'])
+    sdf = masked_scatter_ones(sample_mask, field_outputs["sdf"]).squeeze(-1)
+    colour = masked_scatter(sample_mask, field_outputs["color"])
     # colour = torch.sigmoid(colour)
-    sample_mask = outputs['sample_mask']
+    sample_mask = outputs["sample_mask"]
 
     valid_mask = torch.where(
-        sample_mask, torch.ones_like(
-            sample_mask), torch.zeros_like(sample_mask)
+        sample_mask, torch.ones_like(sample_mask), torch.zeros_like(sample_mask)
     )
 
     # convert sdf to weight
     def sdf2weights(sdf_in, trunc):
-        weights = torch.sigmoid(sdf_in / trunc) * \
-            torch.sigmoid(-sdf_in / trunc)
+        weights = torch.sigmoid(sdf_in / trunc) * torch.sigmoid(-sdf_in / trunc)
 
         signs = sdf_in[:, 1:] * sdf_in[:, :-1]
-        mask = torch.where(
-            signs < 0.0, torch.ones_like(signs), torch.zeros_like(signs)
-        )
+        mask = torch.where(signs < 0.0, torch.ones_like(signs), torch.zeros_like(signs))
         inds = torch.argmax(mask, axis=1)
         inds = inds[..., None]
         z_min = torch.gather(z_vals, 1, inds)
@@ -317,9 +325,8 @@ def render_rays(
         "depth": depth,
         "z_vals": z_vals,
         "sdf": sdf,
-        "weights": weights,
         "ray_mask": ray_mask,
-        "raw": z_min if return_raw else None
+        "raw": z_min if return_raw else None,
     }
 
 
@@ -355,13 +362,12 @@ def bundle_adjust_frames(
             # optimize_params += [{
             #     'params': keyframe.pose.parameters(), 'lr': learning_rate[1]
             # }]
-    
+
     # if len(optimize_params) != 0:
     #     pose_optim = torch.optim.Adam(optimize_params)
     #     optimizers += [pose_optim]
 
     for _ in range(num_iterations):
-
         rays_o = []
         rays_d = []
         rgb_samples = []
@@ -374,10 +380,9 @@ def bundle_adjust_frames(
             sample_mask = frame.sample_mask.cuda()
             sampled_rays_d = frame.rays_d[sample_mask].cuda()
 
-            R = pose[: 3, : 3].transpose(-1, -2)
-            sampled_rays_d = sampled_rays_d@R
-            sampled_rays_o = pose[: 3, 3].reshape(
-                1, -1).expand_as(sampled_rays_d)
+            R = pose[:3, :3].transpose(-1, -2)
+            sampled_rays_d = sampled_rays_d @ R
+            sampled_rays_o = pose[:3, 3].reshape(1, -1).expand_as(sampled_rays_d)
 
             rays_d += [sampled_rays_d]
             rays_o += [sampled_rays_o]
@@ -402,8 +407,7 @@ def bundle_adjust_frames(
             # chunk_size=-1
         )
 
-        loss, _ = loss_criteria(
-            final_outputs, (rgb_samples, depth_samples))
+        loss, _ = loss_criteria(final_outputs, (rgb_samples, depth_samples))
 
         for optim in optimizers:
             optim.zero_grad()
@@ -428,9 +432,8 @@ def track_frame(
     max_voxel_hit=10,
     max_distance=10,
     profiler=None,
-    depth_variance=False
+    depth_variance=False,
 ):
-
     init_pose = deepcopy(frame_pose).cuda()
     init_pose.requires_grad_(True)
     optim = torch.optim.Adam(init_pose.parameters(), lr=learning_rate)
@@ -447,11 +450,15 @@ def track_frame(
         rgb = curr_frame.rgb[sample_mask].cuda()
         depth = curr_frame.depth[sample_mask].cuda()
 
-        ray_dirs_iter = ray_dirs.squeeze(
-            0) @ init_pose.rotation().transpose(-1, -2)
+        ray_dirs_iter = ray_dirs.squeeze(0) @ init_pose.rotation().transpose(-1, -2)
         ray_dirs_iter = ray_dirs_iter.unsqueeze(0)
-        ray_start_iter = init_pose.translation().reshape(
-            1, 1, -1).expand_as(ray_dirs_iter).cuda().contiguous()
+        ray_start_iter = (
+            init_pose.translation()
+            .reshape(1, 1, -1)
+            .expand_as(ray_dirs_iter)
+            .cuda()
+            .contiguous()
+        )
 
         if iter == 0 and profiler is not None:
             profiler.tick("render_rays")
@@ -466,7 +473,7 @@ def track_frame(
             max_voxel_hit,
             max_distance,
             # chunk_size=-1,
-            profiler=profiler if iter == 0 else None
+            profiler=profiler if iter == 0 else None,
         )
         if iter == 0 and profiler is not None:
             profiler.tok("render_rays")
@@ -477,7 +484,8 @@ def track_frame(
         if iter == 0 and profiler is not None:
             profiler.tick("loss_criteria")
         loss, _ = loss_criteria(
-            final_outputs, (rgb, depth), weight_depth_loss=depth_variance)
+            final_outputs, (rgb, depth), weight_depth_loss=depth_variance
+        )
         if iter == 0 and profiler is not None:
             profiler.tok("loss_criteria")
 

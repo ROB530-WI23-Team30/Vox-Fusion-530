@@ -1,11 +1,12 @@
-from multiprocessing.managers import BaseManager, NamespaceProxy
+from multiprocessing.managers import NamespaceProxy
 from copy import deepcopy
 import torch.multiprocessing as mp
-from time import sleep
 import sys
 
+
 class ShareDataProxy(NamespaceProxy):
-    _exposed_ = ('__getattribute__', '__setattr__')
+    _exposed_ = ("__getattribute__", "__setattr__")
+
 
 class ShareData:
     global lock
@@ -27,7 +28,7 @@ class ShareData:
             return deepcopy(self.__decoder)
             print("========== decoder get ==========")
             sys.stdout.flush()
-    
+
     @decoder.setter
     def decoder(self, decoder):
         with lock:
@@ -41,7 +42,7 @@ class ShareData:
             return deepcopy(self.__voxels)
             print("========== voxels get ==========")
             sys.stdout.flush()
-    
+
     @voxels.setter
     def voxels(self, voxels):
         with lock:
@@ -55,7 +56,7 @@ class ShareData:
             return deepcopy(self.__octree)
             print("========== octree get ==========")
             sys.stdout.flush()
-    
+
     @octree.setter
     def octree(self, octree):
         with lock:
@@ -69,7 +70,7 @@ class ShareData:
             return deepcopy(self.__states)
             print("========== states get ==========")
             sys.stdout.flush()
-    
+
     @states.setter
     def states(self, states):
         with lock:
@@ -83,13 +84,13 @@ class ShareData:
             return self.__stop_mapping
             print("========== stop_mapping get ==========")
             sys.stdout.flush()
-    
+
     @stop_mapping.setter
     def stop_mapping(self, stop_mapping):
         with lock:
-           self.__stop_mapping = stop_mapping
-           print("========== stop_mapping set ==========")
-           sys.stdout.flush()
+            self.__stop_mapping = stop_mapping
+            print("========== stop_mapping set ==========")
+            sys.stdout.flush()
 
     @property
     def stop_tracking(self):
@@ -97,13 +98,13 @@ class ShareData:
             return self.__stop_tracking
             print("========== stop_tracking get ==========")
             sys.stdout.flush()
-    
+
     @stop_tracking.setter
     def stop_tracking(self, stop_tracking):
         with lock:
-           self.__stop_tracking = stop_tracking
-           print("========== stop_tracking set ==========")
-           sys.stdout.flush()
+            self.__stop_tracking = stop_tracking
+            print("========== stop_tracking set ==========")
+            sys.stdout.flush()
 
     @property
     def tracking_trajectory(self):
@@ -111,11 +112,9 @@ class ShareData:
             return deepcopy(self.__tracking_trajectory)
             print("========== tracking_trajectory get ==========")
             sys.stdout.flush()
-    
+
     def push_pose(self, pose):
         with lock:
             self.__tracking_trajectory.append(deepcopy(pose))
             # print("========== push_pose ==========")
             sys.stdout.flush()
-
-    
