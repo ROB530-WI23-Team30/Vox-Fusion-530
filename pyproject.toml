@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "vox-fusion-530"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+license = "MIT"
+readme = "README.md"
+# packages = [{include = "vox_fusion_530"}]
+
+[tool.poetry.dependencies]
+python = ">=3.8, <3.11"
+matplotlib = "^3.7.1"
+open3d = "^0.17.0"
+opencv-python-headless = "^4.7.0.72"
+pyyaml = "^6.0"
+scikit-image = "^0.20.0"
+trimesh = "^3.21.2"
+torch = "^2.0.0"
+torchvision = "^0.15.1"
+scikit-learn = "^1.2.2"
+addict = "^2.4.0"
+pandas = "^2.0.0"
+tqdm = "^4.65.0"
+
+
+[tool.poetry.group.dev.dependencies]
+ipython = "^8.11.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

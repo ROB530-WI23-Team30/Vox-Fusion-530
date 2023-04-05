@@ -10,10 +10,10 @@ import glob
 _ext_sources = glob.glob("src/*.cpp") + glob.glob("src/*.cu")
 
 setup(
-    name='grid',
+    name="grid",
     ext_modules=[
         CUDAExtension(
-            name='grid',
+            name="grid",
             sources=_ext_sources,
             include_dirs=["./include"],
             extra_compile_args={
@@ -22,7 +22,5 @@ setup(
             },
         )
     ],
-    cmdclass={
-        'build_ext': BuildExtension
-    }
+    cmdclass={"build_ext": BuildExtension.with_options(use_ninja=False)},
 )

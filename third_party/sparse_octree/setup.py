@@ -10,18 +10,14 @@ import glob
 _ext_sources = glob.glob("src/*.cpp")
 
 setup(
-    name='svo',
+    name="svo",
     ext_modules=[
         CppExtension(
-            name='svo',
+            name="svo",
             sources=_ext_sources,
             include_dirs=["./include"],
-            extra_compile_args={
-                "cxx": ["-O2", "-I./include"]
-            },
+            extra_compile_args={"cxx": ["-O2", "-I./include"]},
         )
     ],
-    cmdclass={
-        'build_ext': BuildExtension
-    }
+    cmdclass={"build_ext": BuildExtension.with_options(use_ninja=False)},
 )

@@ -13,7 +13,7 @@ from variations.render_helpers import bundle_adjust_frames
 from utils.mesh_util import MeshExtractor
 
 torch.classes.load_library(
-    "third_party/sparse_octree/build/lib.linux-x86_64-3.8/svo.cpython-38-x86_64-linux-gnu.so")
+    "third_party/sparse_octree/build/lib.linux-x86_64-cpython-38/svo.cpython-38-x86_64-linux-gnu.so")
 
 
 def get_network_size(net):
