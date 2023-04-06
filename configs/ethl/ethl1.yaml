@@ -13,14 +13,14 @@ data_specs:
 tracker_specs:
   start_frame: 0
   end_frame: -1
-  N_rays: 1024
+  N_rays: 2048
   learning_rate: 0.01
   step_size: 0.05
   keyframe_freq: 10
   num_iterations: 30
 
 mapper_specs:
-  N_rays_each: 1024
+  N_rays_each: 2048
   voxel_size: 0.2
   step_size: 0.05
   num_iterations: 15

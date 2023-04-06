@@ -35,14 +35,14 @@ mapper_specs:
   voxel_size: 0.2
   step_size: 0.1
   window_size: 4
-  num_iterations: 10
+  num_iterations: 15
   max_voxel_hit: 10
   final_iter: 0
   mesh_res: 8
   overlap_th: 0.8
 
 debug_args:
-  verbose: false
-  mesh_freq: 0
+  verbose: False
+  mesh_freq: 100
   render_freq: 50
   render_res: [640, 480]
