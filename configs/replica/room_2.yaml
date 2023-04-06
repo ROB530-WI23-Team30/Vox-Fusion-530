@@ -7,14 +7,12 @@ enable_vis: False
 hard_realtime: False
 
 data_specs:
-  data_path: '/mnt/dataset2/nice-slam/room2'
+  data_path: './Datasets/Replica/room2'
   max_depth: 10
 
 tracker_specs:
   start_frame: 0
   end_frame: -1
-
-tracker_specs:
   N_rays: 1024
   learning_rate: 0.01
   step_size: 0.05

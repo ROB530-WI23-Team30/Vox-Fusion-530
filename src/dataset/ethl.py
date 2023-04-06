@@ -56,8 +56,8 @@ class DataLoader(Dataset):
             osp.join(self.data_path, "depth", "{:04d}.png".format(index)), -1
         )
         depth = depth / 5000.0
-        # if self.max_depth > 0:
-        #     depth[depth > self.max_depth] = 0
+        if self.max_depth > 0:
+            depth[depth > self.max_depth] = 0
         return (rgb / 255.0), depth
 
     def __len__(self):

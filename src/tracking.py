@@ -91,6 +91,7 @@ class Tracking:
         print("******* tracking process died *******")
 
     def check_keyframe(self, check_frame, kf_buffer):
+        """register keyframe to buffer"""
         try:
             kf_buffer.put(check_frame, block=True)
         except:  # noqa

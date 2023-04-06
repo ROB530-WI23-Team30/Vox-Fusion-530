@@ -35,6 +35,7 @@ class VoxSLAM:
         self.tracker = Tracking(args, self.data_stream, self.logger, self.visualizer)
         # mapper
         self.mapper = Mapping(args, self.logger, self.visualizer)
+
         # initialize map with first frame
         self.tracker.process_first_frame(self.kf_buffer)
         self.processes = []
