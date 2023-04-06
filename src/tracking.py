@@ -88,6 +88,11 @@ class Tracking:
                 print("error in dataloading: ", e, f"skipping frame {frame_id}")
 
         share_data.stop_mapping = True
+        # busy waiting for mapping to finish
+        # NOTE: kf_buffer will die with the process for unknown reason
+        while not kf_buffer.empty():
+            pass
+
         print("******* tracking process died *******")
 
     def check_keyframe(self, check_frame, kf_buffer):
