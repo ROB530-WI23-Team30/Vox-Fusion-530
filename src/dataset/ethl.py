@@ -51,7 +51,10 @@ class DataLoader(Dataset):
         return pose
 
     def load_image(self, index):
-        rgb = cv2.imread(osp.join(self.data_path, "rgb", "{:04d}.png".format(index)))
+        rgb = cv2.imread(
+            osp.join(self.data_path, "rgb", "{:04d}.png".format(index)), -1
+        )
+        rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         depth: np.ndarray = cv2.imread(
             osp.join(self.data_path, "depth", "{:04d}.png".format(index)), -1
         )
@@ -79,10 +82,11 @@ if __name__ == "__main__":
     print(f"loader length: {len(loader)}")
     for i in range(num_img):
         index, img, depth, K, _ = loader[i]
+        img = cv2.cvtColor(img.numpy(), cv2.COLOR_BGR2RGB)
         print(K)
         print(index, img.shape)
         print(index, depth.shape)
-        cv2.imshow("img", img.numpy())
+        cv2.imshow("img", img)
         cv2.imshow("depth", depth.numpy())
         print(f"depth: {depth.reshape(-1)[:10]}")
         cv2.waitKey(1)
