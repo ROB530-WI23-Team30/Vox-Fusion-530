@@ -53,11 +53,11 @@ class OptimizablePose(nn.Module):
     def from_matrix(cls, Rt, eps=1e-8):  # [...,3,4]
         R, u = Rt[:3, :3], Rt[:3, 3]
         w = cls.log(R)
-        cls.skew_symmetric(w)
-        theta = w.norm(dim=-1)[..., None, None]
-        torch.eye(3, device=w.device, dtype=torch.float32)
-        cls.taylor_A(theta)
-        cls.taylor_B(theta)
+        # cls.skew_symmetric(w)
+        # theta = w.norm(dim=-1)[..., None, None]
+        # torch.eye(3, device=w.device, dtype=torch.float32)
+        # cls.taylor_A(theta)
+        # cls.taylor_B(theta)
         # invV = I-0.5*wx+(1-A/(2*B))/(theta**2+eps)*wx@wx
         return OptimizablePose(torch.cat([u, w], dim=-1))
 

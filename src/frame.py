@@ -39,6 +39,7 @@ class RGBDFrame(nn.Module):
 
     @torch.no_grad()
     def get_rays(self, w=None, h=None, K=None):
+        """generate ray directions for each pixel in the frame"""
         w = self.w if w is None else w
         h = self.h if h is None else h
         if K is None:
@@ -63,6 +64,7 @@ class RGBDFrame(nn.Module):
 
     @torch.no_grad()
     def get_points(self):
+        """get camera coordinates of points based on depth info and ray directions"""
         vmap = self.rays_d * self.depth[..., None]
         return vmap[self.depth > 0].reshape(-1, 3)
 
