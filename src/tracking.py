@@ -22,7 +22,7 @@ class Tracking:
         self.render_freq = args.debug_args["render_freq"]
         self.render_res = args.debug_args["render_res"]
 
-        RGBDFrame.color_embed_dim = args.decoder_specs["affine_color_dim"]
+        self.color_embed_dim = args.decoder_specs["affine_color_dim"]
 
         self.voxel_size = args.mapper_specs["voxel_size"]
         self.N_rays = args.tracker_specs["N_rays"]
@@ -53,7 +53,9 @@ class Tracking:
     def process_first_frame(self, kf_buffer):
         init_pose = self.data_stream.get_init_pose()
         fid, rgb, depth, K, _ = self.data_stream[self.start_frame]
-        first_frame = RGBDFrame(fid, rgb, depth, K, init_pose)
+        first_frame = RGBDFrame(
+            fid, rgb, depth, K, init_pose, color_embed_dim=self.color_embed_dim
+        )
         first_frame.pose.requires_grad_(False)
         first_frame.optim = torch.optim.Adam(first_frame.pose.parameters(), lr=1e-3)
 
@@ -81,7 +83,9 @@ class Tracking:
                     cv2.imshow("depth", depth.cpu().numpy())
                     cv2.waitKey(1)
 
-                current_frame = RGBDFrame(*data_in)
+                current_frame = RGBDFrame(
+                    *data_in, color_embed_dim=self.color_embed_dim
+                )
                 self.do_tracking(share_data, current_frame, kf_buffer)
 
                 if self.render_freq > 0 and (frame_id + 1) % self.render_freq == 0:
@@ -167,6 +171,7 @@ class Tracking:
         final_outputs = render_rays(
             rays_o,
             rays_d,
+            current_frame.color_embed,
             map_states,
             decoder,
             self.step_size,

@@ -126,9 +126,7 @@ class Decoder(nn.Module):
 
         # affine transformation in color space
         if self.affine_color_dim > 0:
-            self.color_transform_out = nn.Linear(
-                sdf_dim + self.pe.embedding_size + self.affine_color_dim, 9
-            )
+            self.color_transform_out = nn.Linear(self.affine_color_dim, 9)
         # self.output_linear = nn.Linear(width, 4)
 
     def get_values(self, x, color_emb):
@@ -152,8 +150,7 @@ class Decoder(nn.Module):
 
         # color transform
         if self.affine_color_dim > 0:
-            h = torch.cat([h, color_emb], dim=-1)
-            color_transform = self.color_transform_out(h).view(3, 3)
+            color_transform = self.color_transform_out(color_emb).view(3, 3)
             rgb = rgb @ color_transform
 
         outputs = torch.cat([rgb, sdf], dim=-1)

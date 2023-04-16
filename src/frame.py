@@ -8,9 +8,7 @@ rays_dir = None
 
 
 class RGBDFrame(nn.Module):
-    color_embed_dim: int = 0
-
-    def __init__(self, fid, rgb, depth, K, pose=None) -> None:
+    def __init__(self, fid, rgb, depth, K, pose=None, color_embed_dim: int = 0) -> None:
         super().__init__()
         self.stamp = fid
         self.h, self.w = depth.shape
@@ -20,10 +18,14 @@ class RGBDFrame(nn.Module):
         # self.register_buffer("rgb", rgb)
         # self.register_buffer("depth", depth)
 
-        if self.color_embed_dim > 0:
+        if color_embed_dim > 0:
             self.color_embed = torch.zeros(
-                self.color_embed_dim, requires_grad=True, dtype=torch.float32
-            ).cuda()
+                color_embed_dim,
+                requires_grad=True,
+                dtype=torch.float32,
+                device="cuda",
+            )
+            torch.nn.init.normal_(self.color_embed, std=0.01)
             self.color_optim = torch.optim.Adam([self.color_embed], lr=1e-3)
         else:
             self.color_embed = None

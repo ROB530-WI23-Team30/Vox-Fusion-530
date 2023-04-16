@@ -489,10 +489,10 @@ def track_frame(
         if iter == 0 and profiler is not None:
             profiler.tick("backward step")
         optim.zero_grad()
-        if curr_frame.color_embed_dim > 0:
+        if curr_frame.color_optim is not None:
             curr_frame.color_optim.zero_grad()
         loss.backward()
-        if curr_frame.color_embed_dim > 0:
+        if curr_frame.color_optim is not None:
             curr_frame.color_optim.step()
         optim.step()
         if iter == 0 and profiler is not None:
