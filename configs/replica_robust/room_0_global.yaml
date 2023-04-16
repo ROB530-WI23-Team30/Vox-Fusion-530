@@ -1,6 +1,6 @@
-base_config: configs/replica/replica.yaml
+base_config: configs/replica_robust/replica.yaml
 
-exp_name: replica/room0_global
+exp_name: replica_robust/room0_global
 
 # seeding: 42
 enable_vis: False

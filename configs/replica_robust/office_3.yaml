@@ -1,6 +1,6 @@
-base_config: configs/replica/replica.yaml
+base_config: configs/replica_robust/replica.yaml
 
-exp_name: replica/office3
+exp_name: replica_robust/office3
 
 # seeding: 42
 enable_vis: False
