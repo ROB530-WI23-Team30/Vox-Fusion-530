@@ -176,6 +176,9 @@ class Mapping:
         # sleep(0.01)
 
     def select_optimize_targets(self, tracked_frame=None):
+        """select frames to optimize
+        FIXME: overlap method not implemented yet
+        """
         # TODO: better ways
         targets = []
         selection_method = "random"

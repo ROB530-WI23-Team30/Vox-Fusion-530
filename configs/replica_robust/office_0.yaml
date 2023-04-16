@@ -1,13 +1,13 @@
 base_config: configs/replica/replica.yaml
 
-exp_name: replica/office4
+exp_name: replica/office0
 
 # seeding: 42
 enable_vis: False
 hard_realtime: False
 
 data_specs:
-  data_path: '/mnt/dataset2/nice-slam/office4'
+  data_path: './Datasets/Replica/office0'
   max_depth: 10
 
 tracker_specs:

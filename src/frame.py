@@ -8,6 +8,8 @@ rays_dir = None
 
 
 class RGBDFrame(nn.Module):
+    color_embed_dim: int = 0
+
     def __init__(self, fid, rgb, depth, K, pose=None) -> None:
         super().__init__()
         self.stamp = fid
@@ -17,6 +19,8 @@ class RGBDFrame(nn.Module):
         self.K = K
         # self.register_buffer("rgb", rgb)
         # self.register_buffer("depth", depth)
+
+        self.color_embed = torch.zeros(self.color_embed_dim, requires_grad=True)
 
         if pose is not None:
             pose[:3, 3] += 10
