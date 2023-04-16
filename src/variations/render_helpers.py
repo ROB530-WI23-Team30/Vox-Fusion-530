@@ -196,6 +196,7 @@ def eval_points(sdf_network, map_states, sampled_xyz, sampled_idx, voxel_size):
 def render_rays(
     rays_o,
     rays_d,
+    color_embeddings,
     map_states,
     sdf_network,
     step_size,
@@ -267,6 +268,7 @@ def render_rays(
         if profiler is not None:
             profiler.tick("get_features")
         chunk_inputs = get_features(chunk_samples, map_states, voxel_size)
+        chunk_inputs["color_emb"] = color_embeddings
         if profiler is not None:
             profiler.tok("get_features")
 
@@ -358,6 +360,8 @@ def bundle_adjust_frames(
     for keyframe in keyframe_graph:
         if keyframe.stamp != 0 and update_pose:
             optimizers += [keyframe.optim]
+            if keyframe.color_optim is not None:
+                optimizers += [keyframe.color_optim]
             # keyframe.pose.requires_grad_(True)
             # optimize_params += [{
             #     'params': keyframe.pose.parameters(), 'lr': learning_rate[1]
@@ -368,11 +372,6 @@ def bundle_adjust_frames(
     #     optimizers += [pose_optim]
 
     for _ in range(num_iterations):
-        rays_o = []
-        rays_d = []
-        rgb_samples = []
-        depth_samples = []
-
         for frame in keyframe_graph:
             pose = frame.get_pose().cuda()
             frame.sample_rays(N_rays)
@@ -384,37 +383,34 @@ def bundle_adjust_frames(
             sampled_rays_d = sampled_rays_d @ R
             sampled_rays_o = pose[:3, 3].reshape(1, -1).expand_as(sampled_rays_d)
 
-            rays_d += [sampled_rays_d]
-            rays_o += [sampled_rays_o]
-            rgb_samples += [frame.rgb.cuda()[sample_mask]]
-            depth_samples += [frame.depth.cuda()[sample_mask]]
+            rays_d = sampled_rays_d.clone().unsqueeze(0)
+            rays_o = sampled_rays_o.clone().unsqueeze(0)
+            rgb_samples = frame.rgb.cuda()[sample_mask].unsqueeze(0)
+            depth_samples = frame.depth.cuda()[sample_mask].unsqueeze(0)
 
-        rays_d = torch.cat(rays_d, dim=0).unsqueeze(0)
-        rays_o = torch.cat(rays_o, dim=0).unsqueeze(0)
-        rgb_samples = torch.cat(rgb_samples, dim=0).unsqueeze(0)
-        depth_samples = torch.cat(depth_samples, dim=0).unsqueeze(0)
+            final_outputs = render_rays(
+                rays_o,
+                rays_d,
+                frame.color_embed,
+                map_states,
+                sdf_network,
+                step_size,
+                voxel_size,
+                truncation,
+                max_voxel_hit,
+                max_distance,
+                # chunk_size=-1
+            )
 
-        final_outputs = render_rays(
-            rays_o,
-            rays_d,
-            map_states,
-            sdf_network,
-            step_size,
-            voxel_size,
-            truncation,
-            max_voxel_hit,
-            max_distance,
-            # chunk_size=-1
-        )
+            loss, _ = loss_criteria(final_outputs, (rgb_samples, depth_samples))
 
-        loss, _ = loss_criteria(final_outputs, (rgb_samples, depth_samples))
+            for optim in optimizers:
+                optim.zero_grad()
 
-        for optim in optimizers:
-            optim.zero_grad()
-        loss.backward()
+            loss.backward()
 
-        for optim in optimizers:
-            optim.step()
+            for optim in optimizers:
+                optim.step()
 
 
 def track_frame(
@@ -465,6 +461,7 @@ def track_frame(
         final_outputs = render_rays(
             ray_start_iter,
             ray_dirs_iter,
+            curr_frame.color_embed,
             map_states,
             sdf_network,
             step_size,
@@ -492,7 +489,11 @@ def track_frame(
         if iter == 0 and profiler is not None:
             profiler.tick("backward step")
         optim.zero_grad()
+        if curr_frame.color_embed_dim > 0:
+            curr_frame.color_optim.zero_grad()
         loss.backward()
+        if curr_frame.color_embed_dim > 0:
+            curr_frame.color_optim.step()
         optim.step()
         if iter == 0 and profiler is not None:
             profiler.tok("backward step")

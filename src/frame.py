@@ -20,7 +20,14 @@ class RGBDFrame(nn.Module):
         # self.register_buffer("rgb", rgb)
         # self.register_buffer("depth", depth)
 
-        self.color_embed = torch.zeros(self.color_embed_dim, requires_grad=True)
+        if self.color_embed_dim > 0:
+            self.color_embed = torch.zeros(
+                self.color_embed_dim, requires_grad=True, dtype=torch.float32
+            ).cuda()
+            self.color_optim = torch.optim.Adam([self.color_embed], lr=1e-3)
+        else:
+            self.color_embed = None
+            self.color_optim = None
 
         if pose is not None:
             pose[:3, 3] += 10

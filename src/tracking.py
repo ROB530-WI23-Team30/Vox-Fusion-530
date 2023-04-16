@@ -22,8 +22,7 @@ class Tracking:
         self.render_freq = args.debug_args["render_freq"]
         self.render_res = args.debug_args["render_res"]
 
-        self.affine_color_dim = args.criteria["affine_color_dim"]
-        RGBDFrame.color_embed_dim = self.affine_color_dim
+        RGBDFrame.color_embed_dim = args.decoder_specs["affine_color_dim"]
 
         self.voxel_size = args.mapper_specs["voxel_size"]
         self.N_rays = args.tracker_specs["N_rays"]
