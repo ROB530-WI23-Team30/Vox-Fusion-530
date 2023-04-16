@@ -81,53 +81,53 @@ class Mapping:
         print("mapping process started!")
         while True:
             # torch.cuda.empty_cache()
-            if not kf_buffer.empty():
-                tracked_frame = kf_buffer.get()
-                # self.create_voxels(tracked_frame)
-
-                if not self.initialized:
-                    if self.mesher is not None:
-                        self.mesher.rays_d = tracked_frame.get_rays()
-                    self.create_voxels(tracked_frame)
-                    self.insert_keyframe(tracked_frame)
-                    while kf_buffer.empty():
-                        self.do_mapping(share_data)
-                        # self.update_share_data(share_data, tracked_frame.stamp)
-                    self.initialized = True
+            if kf_buffer.empty():
+                if share_data.stop_mapping:
+                    break
                 else:
-                    self.do_mapping(share_data, tracked_frame)
-                    self.create_voxels(tracked_frame)
-                    # if (tracked_frame.stamp - self.current_keyframe.stamp) > 50:
-                    if (tracked_frame.stamp - self.current_keyframe.stamp) > 50:
-                        self.insert_keyframe(tracked_frame)
-                        print(
-                            f"********** current num kfs: { len(self.keyframe_graph) }"
-                            + "**********"
-                        )
+                    continue
 
-                # self.create_voxels(tracked_frame)
-                tracked_pose = tracked_frame.get_pose().detach()
-                ref_pose = self.current_keyframe.get_pose().detach()
-                rel_pose = torch.linalg.inv(ref_pose) @ tracked_pose
-                self.frame_poses += [(len(self.keyframe_graph) - 1, rel_pose.cpu())]
-                self.depth_maps += [tracked_frame.depth.clone().cpu()]
+            tracked_frame = kf_buffer.get()
+            # self.create_voxels(tracked_frame)
 
-                if (
-                    self.mesh_freq > 0
-                    and (tracked_frame.stamp + 1) % self.mesh_freq == 0
-                ):
-                    self.logger.log_mesh(
-                        self.extract_mesh(res=self.mesh_res, clean_mesh=True),
-                        name=f"mesh_{tracked_frame.stamp:05d}.ply",
+            if not self.initialized:
+                if self.mesher is not None:
+                    self.mesher.rays_d = tracked_frame.get_rays()
+                self.create_voxels(tracked_frame)
+                self.insert_keyframe(tracked_frame)
+                while kf_buffer.empty():
+                    self.do_mapping(share_data)
+                    # self.update_share_data(share_data, tracked_frame.stamp)
+                self.initialized = True
+            else:
+                self.do_mapping(share_data, tracked_frame)
+                self.create_voxels(tracked_frame)
+                # if (tracked_frame.stamp - self.current_keyframe.stamp) > 50:
+                if (tracked_frame.stamp - self.current_keyframe.stamp) > 50:
+                    self.insert_keyframe(tracked_frame)
+                    print(
+                        f"********** current num kfs: { len(self.keyframe_graph) }"
+                        + "**********"
                     )
 
-                if (
-                    self.save_data_freq > 0
-                    and (tracked_frame.stamp + 1) % self.save_data_freq == 0
-                ):
-                    self.save_debug_data(tracked_frame)
-            elif share_data.stop_mapping:
-                break
+            # self.create_voxels(tracked_frame)
+            tracked_pose = tracked_frame.get_pose().detach()
+            ref_pose = self.current_keyframe.get_pose().detach()
+            rel_pose = torch.linalg.inv(ref_pose) @ tracked_pose
+            self.frame_poses += [(len(self.keyframe_graph) - 1, rel_pose.cpu())]
+            self.depth_maps += [tracked_frame.depth.clone().cpu()]
+
+            if self.mesh_freq > 0 and (tracked_frame.stamp + 1) % self.mesh_freq == 0:
+                self.logger.log_mesh(
+                    self.extract_mesh(res=self.mesh_res, clean_mesh=True),
+                    name=f"mesh_{tracked_frame.stamp:05d}.ply",
+                )
+
+            if (
+                self.save_data_freq > 0
+                and (tracked_frame.stamp + 1) % self.save_data_freq == 0
+            ):
+                self.save_debug_data(tracked_frame)
 
         print(f"********** post-processing {self.final_iter} steps **********")
         self.num_iterations = 1
@@ -206,9 +206,12 @@ class Mapping:
         # self.update_grid_features()
 
     def create_voxels(self, frame):
+        # cam frame point cloud
         points = frame.get_points().cuda()
         pose = frame.get_pose().cuda()
+        # global frame point cloud
         points = points @ pose[:3, :3].transpose(-1, -2) + pose[:3, 3]
+        # grid frame
         voxels = torch.div(points, self.voxel_size, rounding_mode="floor")
 
         self.svo.insert(voxels.cpu().int())
