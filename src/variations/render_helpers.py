@@ -110,7 +110,7 @@ def get_scores(sdf_network, map_states, voxel_size, bits=8):
         end = 0.5  # - 1./bits
 
         x = y = z = torch.linspace(start, end, res)
-        xx, yy, zz = torch.meshgrid(x, y, z)
+        xx, yy, zz = torch.meshgrid(x, y, z, indexing="ij")
         sampled_xyz = torch.stack([xx, yy, zz], dim=-1).float().cuda()
 
         sampled_xyz *= voxel_size
