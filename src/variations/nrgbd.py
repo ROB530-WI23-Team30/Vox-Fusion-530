@@ -131,7 +131,7 @@ class Decoder(nn.Module):
             nn.init.normal_(self.color_transform_out.bias, std=0.01)
         # self.output_linear = nn.Linear(width, 4)
 
-    def get_values(self, x, color_emb):
+    def get_values(self, x, color_emb=None):
         x = self.pe(x)
         h = x
         for i, linear in enumerate(self.pts_linears):
@@ -152,7 +152,7 @@ class Decoder(nn.Module):
 
         # color transform
         # NOTE: residual of identity matrix
-        if self.affine_color_dim > 0:
+        if color_emb is not None and self.affine_color_dim > 0:
             color_transform = self.color_transform_out(color_emb).view(
                 3, 3
             ) + torch.eye(3)
