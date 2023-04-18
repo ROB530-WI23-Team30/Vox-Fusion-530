@@ -1,13 +1,13 @@
-base_config: configs/replica_robust/replica.yaml
+base_config: configs/replica/replica.yaml
 
-exp_name: replica_robust/office4
+exp_name: replica/office0_global
 
 # seeding: 42
 enable_vis: False
 hard_realtime: False
 
 data_specs:
-  data_path: './Datasets/Replica/office4'
+  data_path: './Datasets/Replica_global/office0'
   max_depth: 10
 
 tracker_specs:
