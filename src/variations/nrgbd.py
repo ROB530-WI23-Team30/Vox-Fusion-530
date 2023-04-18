@@ -153,9 +153,9 @@ class Decoder(nn.Module):
         # color transform
         # NOTE: residual of identity matrix
         if color_emb is not None and self.affine_color_dim > 0:
-            color_transform = self.color_transform_out(color_emb).view(
-                3, 3
-            ) + torch.eye(3)
+            color_transform = (
+                self.color_transform_out(color_emb).view(3, 3) + torch.eye(3).cuda()
+            )
             rgb = rgb @ color_transform
 
         outputs = torch.cat([rgb, sdf], dim=-1)
