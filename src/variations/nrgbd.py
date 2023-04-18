@@ -87,6 +87,7 @@ class Decoder(nn.Module):
         sdf_dim=128,
         skips=[4],
         multires=6,
+        affine_color_dim=10,
         embedder="nerf",
         local_coord=False,
         **kwargs,
@@ -95,6 +96,7 @@ class Decoder(nn.Module):
         super().__init__()
         self.D = depth
         self.W = width
+        self.affine_color_dim = affine_color_dim
         self.skips = skips
         if embedder == "nerf":
             self.pe = Nerf_positional_embedding(in_dim, multires)
@@ -121,9 +123,15 @@ class Decoder(nn.Module):
             nn.Linear(width, 3),
             nn.Sigmoid(),
         )
+
+        # affine transformation in color space
+        if self.affine_color_dim > 0:
+            self.color_transform_out = nn.Linear(self.affine_color_dim, 9)
+            nn.init.normal_(self.color_transform_out.weight, std=0.01)
+            nn.init.normal_(self.color_transform_out.bias, std=0.01)
         # self.output_linear = nn.Linear(width, 4)
 
-    def get_values(self, x):
+    def get_values(self, x, color_emb=None):
         x = self.pe(x)
         h = x
         for i, linear in enumerate(self.pts_linears):
@@ -138,16 +146,23 @@ class Decoder(nn.Module):
         sdf = sdf_out[:, :1]
         sdf_feat = sdf_out[:, 1:]
 
+        # rgb value
         h = torch.cat([sdf_feat, x], dim=-1)
         rgb = self.color_out(h)
+
+        # color transform
+        # NOTE: residual of identity matrix
+        if color_emb is not None and self.affine_color_dim > 0:
+            color_transform = (
+                self.color_transform_out(color_emb).view(3, 3) + torch.eye(3).cuda()
+            )
+            rgb = rgb @ color_transform
+
         outputs = torch.cat([rgb, sdf], dim=-1)
 
         return outputs
 
-    def get_sdf(self, inputs):
-        return self.get_values(inputs["emb"])[:, 3]
-
     def forward(self, inputs):
-        outputs = self.get_values(inputs["emb"])
+        outputs = self.get_values(inputs["emb"], inputs["color_emb"])
 
         return {"color": outputs[:, :3], "sdf": outputs[:, 3]}

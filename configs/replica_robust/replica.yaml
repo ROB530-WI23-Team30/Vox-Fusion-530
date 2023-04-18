@@ -16,7 +16,7 @@ decoder_specs:
   skips: []
   embedder: none
   multires: 0
-  affine_color_dim: 0 # perform per-image affine transformation in color space
+  affine_color_dim: 10 # perform per-image affine transformation in color space
 
 tracker_specs:
   N_rays: 1024

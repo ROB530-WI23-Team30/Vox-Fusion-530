@@ -13,8 +13,6 @@ data_specs:
 tracker_specs:
   start_frame: 0
   end_frame: -1
-
-tracker_specs:
   N_rays: 1024
   learning_rate: 0.01
   step_size: 0.05
