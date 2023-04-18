@@ -9,6 +9,7 @@ from loggers import BasicLogger
 from utils.import_util import get_decoder, get_property
 from variations.render_helpers import bundle_adjust_frames
 from utils.mesh_util import MeshExtractor
+from frame import RGBDFrame
 from glob import glob
 
 torch.classes.load_library(glob("third_party/sparse_octree/build/lib*/*.so")[0])
@@ -77,7 +78,7 @@ class Mapping:
         self.depth_maps = []
         self.last_tracked_frame_id = 0
 
-        self.start_frame = None
+        self.frame_embs: list[torch.Tensor] = []
 
     def spin(self, share_data, kf_buffer):
         print("mapping process started!")
@@ -89,12 +90,12 @@ class Mapping:
                 else:
                     continue
 
-            tracked_frame = kf_buffer.get()
+            tracked_frame: RGBDFrame = kf_buffer.get()
+            self.frame_embs.append(tracked_frame.color_embed)
             # self.create_voxels(tracked_frame)
 
             if not self.initialized:
                 # record start frame
-                self.start_frame = tracked_frame
                 if self.mesher is not None:
                     self.mesher.rays_d = tracked_frame.get_rays()
                 self.create_voxels(tracked_frame)
@@ -147,7 +148,12 @@ class Mapping:
         self.logger.log_numpy_data(np.asarray(pose), "frame_poses")
         self.logger.log_mesh(mesh)
         self.logger.log_numpy_data(self.extract_voxels(), "final_voxels")
-        print("******* mapping process died *******")
+        # color embeddings
+        if self.frame_embs[0] is not None:
+            frame_embs = torch.vstack(self.frame_embs).cpu().numpy()
+            self.logger.log_numpy_data(frame_embs, "color_embeddings")
+
+        print("******* mapping process finished *******")
 
     def do_mapping(
         self, share_data, tracked_frame=None, update_pose=True, update_decoder=True
@@ -279,7 +285,7 @@ class Mapping:
             require_color=True,
             offset=-10,
             res=res,
-            color_emb=self.start_frame.color_embed,
+            color_emb=self.frame_embs[0],
         )
         return mesh
 
