@@ -11,6 +11,7 @@ class Criterion(nn.Module):
         self.sdf_weight = args.criteria["sdf_weight"]
         self.fs_weight = args.criteria["fs_weight"]
         self.truncation = args.criteria["sdf_truncation"]
+        self.rgb_ignore_ratio = args.criteria["rgb_ignore_ratio"]
         self.max_dpeth = args.data_specs["max_depth"]
 
     def forward(
@@ -39,7 +40,15 @@ class Criterion(nn.Module):
         # color_loss = self.compute_loss(
         #     gt_color, pred_color, loss_type='l1')
         if use_color_loss:
-            color_loss = (gt_color - pred_color).abs().mean()
+            color_loss = (gt_color - pred_color).abs()
+            # mask out large loss
+            if self.rgb_ignore_ratio > 0:
+                color_loss_median = color_loss.median()
+                color_loss = color_loss[
+                    color_loss < self.rgb_ignore_ratio * color_loss_median
+                ]
+
+            color_loss = color_loss.mean()
             loss += self.rgb_weight * color_loss
             loss_dict["color_loss"] = color_loss.item()
 

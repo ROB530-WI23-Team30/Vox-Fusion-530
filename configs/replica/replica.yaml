@@ -3,7 +3,8 @@ decoder: nrgbd
 dataset: replica
 
 criteria:
-  rgb_weight: .5
+  rgb_weight: 1
+  rgb_ignore_ratio: 0 # ratio between single loss and loss median to ignore
   depth_weight: 1
   sdf_weight: 5000.0
   fs_weight: 10.0
