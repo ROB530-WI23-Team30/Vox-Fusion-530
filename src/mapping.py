@@ -77,6 +77,8 @@ class Mapping:
         self.depth_maps = []
         self.last_tracked_frame_id = 0
 
+        self.start_frame = None
+
     def spin(self, share_data, kf_buffer):
         print("mapping process started!")
         while True:
@@ -91,6 +93,8 @@ class Mapping:
             # self.create_voxels(tracked_frame)
 
             if not self.initialized:
+                # record start frame
+                self.start_frame = tracked_frame
                 if self.mesher is not None:
                     self.mesher.rays_d = tracked_frame.get_rays()
                 self.create_voxels(tracked_frame)
@@ -275,6 +279,7 @@ class Mapping:
             require_color=True,
             offset=-10,
             res=res,
+            color_emb=self.start_frame.color_embed,
         )
         return mesh
 

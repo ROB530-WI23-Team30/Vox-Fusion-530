@@ -87,6 +87,7 @@ class MeshExtractor:
         require_color=False,
         offset=-10,
         res=8,
+        color_emb=None,
     ):
         sdf_grid = get_scores(decoder, map_states, voxel_size, bits=res)
         sdf_grid = sdf_grid.reshape(-1, res, res, res, 4)
@@ -139,7 +140,12 @@ class MeshExtractor:
                 # get color
                 if len(points) > 0:
                     color = eval_points(
-                        decoder, map_states, points, index, voxel_size
+                        decoder,
+                        map_states,
+                        points,
+                        index,
+                        voxel_size,
+                        color_emb=color_emb,
                     ).cuda()
                     color_empty[valid] = color
                 colors += [color_empty]

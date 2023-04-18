@@ -155,7 +155,9 @@ def get_scores(sdf_network, map_states, voxel_size, bits=8):
 
 
 @torch.no_grad()
-def eval_points(sdf_network, map_states, sampled_xyz, sampled_idx, voxel_size):
+def eval_points(
+    sdf_network, map_states, sampled_xyz, sampled_idx, voxel_size, color_emb=None
+):
     feats = map_states["voxel_vertex_idx"]
     points = map_states["voxel_center_xyz"]
     values = map_states["voxel_vertex_emb"]
@@ -184,7 +186,9 @@ def eval_points(sdf_network, map_states, sampled_xyz, sampled_idx, voxel_size):
     )
 
     # evaluation with density
-    sdf_values = sdf_network.get_values(field_inputs["emb"].float().cuda())
+    sdf_values = sdf_network.get_values(
+        field_inputs["emb"].float().cuda(), color_emb=color_emb
+    )
     return sdf_values.reshape(-1, 4)[:, :3].detach().cpu()
 
     # return torch.cat([
