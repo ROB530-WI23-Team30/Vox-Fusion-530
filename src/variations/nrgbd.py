@@ -156,7 +156,7 @@ class Decoder(nn.Module):
             color_transform = (
                 self.color_transform_out(color_emb).view(3, 3) + torch.eye(3).cuda()
             )
-            rgb = rgb @ color_transform
+            rgb = torch.clamp(rgb @ color_transform, min=0, max=255)
 
         outputs = torch.cat([rgb, sdf], dim=-1)
 
