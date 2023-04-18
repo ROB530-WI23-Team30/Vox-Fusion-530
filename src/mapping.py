@@ -150,7 +150,8 @@ class Mapping:
         self.logger.log_numpy_data(self.extract_voxels(), "final_voxels")
         # color embeddings
         if self.frame_embs[0] is not None:
-            frame_embs = torch.vstack(self.frame_embs).cpu().numpy()
+            with torch.no_grad():
+                frame_embs = torch.vstack(self.frame_embs).detach().cpu().numpy()
             self.logger.log_numpy_data(frame_embs, "color_embeddings")
 
         print("******* mapping process finished *******")
