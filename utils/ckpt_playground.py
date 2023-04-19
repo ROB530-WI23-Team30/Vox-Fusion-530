@@ -8,6 +8,7 @@ import numpy as np  # noqa
 from tqdm import tqdm  # noqa
 from variations.render_helpers import render_rays  # noqa
 from variations.nrgbd import Decoder  # noqa
+from variations.render_helpers import fill_in  # noqa
 from dataset.replica import DataLoader  # noqa
 from frame import RGBDFrame  # noqa
 
@@ -51,6 +52,13 @@ def render_debug_images(decoder, map_states, current_frame):
 
     rdepth = final_outputs["depth"]
     rcolor = final_outputs["color"]
+
+    rdepth = fill_in(
+        (h, w, 1), final_outputs["ray_mask"].view(h, w), final_outputs["depth"], 0
+    )
+    rcolor = fill_in(
+        (h, w, 3), final_outputs["ray_mask"].view(h, w), final_outputs["color"], 0
+    )
     return rdepth.detach().cpu(), rcolor.detach().cpu()
 
 
@@ -81,4 +89,7 @@ map_state = ckpt["map_state"]
 for i in tqdm(range(dataset.num_imgs)):
     current_frame = RGBDFrame(*(dataset[i]))
     depth, color = render_debug_images(decoder, map_state, current_frame)
-    break
+    print(f"depth: {depth.shape}")
+    print(f"color: {color.shape}")
+    if i > 50:
+        break
