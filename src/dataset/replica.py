@@ -32,7 +32,7 @@ class DataLoader(Dataset):
 
     def load_gt_pose(self):
         gt_file = osp.join(self.data_path, "traj.txt")
-        gt_pose = np.loadtxt(gt_file)
+        gt_pose = np.loadtxt(gt_file).reshape(-1, 4, 4)
         return gt_pose
 
     def load_depth(self, index):
