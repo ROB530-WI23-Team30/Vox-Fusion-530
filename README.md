@@ -1,45 +1,42 @@
-# ROB530-Project
-project repo for ROB530 WN 2023
+# Vox-Fusion-Robust
 
-## Tasks and Milestones
-+ find/create map data that contains illumination change
-  + 2/3 people
-  + deadline: 3.13 (spring break ends)
-+ concrete implementation idea
-  + 2/3 people
-  + deadline: 3.6 (concurrent)
-+ project implementation
-  + all people
-  + more detailed later
-  + start: 3.6
-  + deadline: 4.10
-+ experiments & evaluation
-  + 2/3 people
-  + start: 4.3
-  + end: 4.14
-+ paper writing & video making
-  + all people
-  + start: 4.3
-  + end: 4.18
+[Video](https://www.youtube.com/watch?v=E9kn_qwEzfA&ab_channel=AndreyaWare) | [Paper](https://drive.google.com/file/d/1DKRFzjHZBsu_UYY4IjszWxFycgD7WR3E) | [Slides](https://docs.google.com/presentation/d/1HlGjRGT5xJ6_w2D3prLMUajnn-evIoLD_O9d5YVoMMg) | [Datasets](https://drive.google.com/drive/folders/1DLFd3-eh3-RLGudyh_DqBgU33rEvdAzT)
+
+> Authors: [Andreya Ware](https://github.com/andreyaW), [Che Chen](https://github.com/TomCC7), [Swetha Subbiah](https://github.com/sswetha565), [Ved Abhyankar](https://github.com/VedAbhyankar), [Tiancheng Zhang](https://github.com/zhangtc-105)
+
+Achieve illumination robustness for Vox-Fusion.
+
+![Comparison](./assets/comparison.gif)
+
+![result](./assets/result.png)
+
+
+
+## Main Contributions
+
++ Based on [Vox-Fusion](https://yangxingrui.com/vox-fusion/), use a per-image embedding and a single MLP layer to predict an affine transformation in color space (first proposed in [URF](https://urban-radiance-fields.github.io/)) so that the SLAM algorithm is robust to global illumination change.
+
+![decoder](./assets/decoder.png)
+
++ Created datasets for evaluating both global and local illumination changes, available [here](https://drive.google.com/drive/folders/1DLFd3-eh3-RLGudyh_DqBgU33rEvdAzT)
+
+
 
 ## Install
 
-+ Install [poetry](https://python-poetry.org/docs/)
-+ disable poetry to use keyring
++ install `cuda=11.7`, `python>=3.8`
+
++ install [poetry](https://python-poetry.org/docs/)
++ prepare a python and set poetry environment using
+
+```bash
+poetry env use /path/to/python
+```
+
++ install python environment
 
 ```bash
 export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
-```
-
-+ prepare a python3.8 and set poetry environment using
-
-```bash
-poetry env use /path/to/python3.8
-```
-
-+ install
-
-```bash
 poetry install
 ```
 
@@ -49,24 +46,32 @@ poetry install
 poetry shell
 ```
 
-+ prepare pre-commit hook
++ build third-party libs
 
 ```bash
-pre-commit install
+./install.sh
 ```
 
++ download [dataset](https://drive.google.com/drive/folders/1DLFd3-eh3-RLGudyh_DqBgU33rEvdAzT) you need.
 
-## Dataset
-### ETHL
 
-Download [here](http://cvg.ethz.ch/research/illumination-change-robust-dslam/).
 
-+ TUM compatible dataset
+## Training
 
-+ Synthetic data is 30FPS
-+ https://www.doc.ic.ac.uk/~ahanda/VaFRIC/codes.html for intrinsics
-+ https://cvg.cit.tum.de/data/datasets/rgbd-dataset/file_formats for file formats
++ Just run
 
-### ETH3D
+```bash
+poetry run python demo/run.py configs/replica_robust/room_0_global.yaml
+```
 
-Download [here](https://www.eth3d.net/slam_datasets). Some datasets contain illumination changes.
++ The training log is stored within the `log` directory
+
+
+
+## Evaluation
+
+Several evaluation scripts in `utils`
+
++ `eval_mesh.py` - evaluate mesh reconstruction
++ `eval_track.py`  - evaluate tracking performance
++ `rerender_replica.py` - re-render scenes in replica dataset
