@@ -4,7 +4,7 @@
 
 > Authors: [Andreya Ware](https://github.com/andreyaW), [Che Chen](https://github.com/TomCC7), [Swetha Subbiah](https://github.com/sswetha565), [Ved Abhyankar](https://github.com/VedAbhyankar), [Tiancheng Zhang](https://github.com/zhangtc-105)
 
-Achieve illumination robustness for Vox-Fusion.
+Achieve illumination robustness for [Vox-Fusion](https://yangxingrui.com/vox-fusion/).
 
 ![Comparison](./assets/comparison.gif)
 
